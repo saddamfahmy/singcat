@@ -1,0 +1,21 @@
+{
+  "name": "singcat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Singcat Express and Socket.IO server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "midi:convert": "node scripts/convert-midi-to-json.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1",
+    "spessasynth_lib": "^4.3.14"
+  },
+  "devDependencies": {
+    "@tonejs/midi": "^2.0.28",
+    "nodemon": "^3.1.14"
+  }
+}
