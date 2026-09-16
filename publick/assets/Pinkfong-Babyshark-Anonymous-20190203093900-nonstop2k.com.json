@@ -6,7 +6,7 @@
   "global": {
     "volume": 100,
     "speed": 99,
-    "pitch": 12
+    "pitch": 0
   },
   "tracks": [
     {
@@ -3393,10 +3393,10 @@
       },
       "enabled": true,
       "volume": 200,
-      "soundfont": "Cat_Meow.sf2",
+      "soundfont": "MEOW.sf2",
       "playback": {
         "engine": "spessasynth",
-        "soundfont": "Cat_Meow.sf2"
+        "soundfont": "MEOW.sf2"
       },
       "notes": [
         {
@@ -6563,5 +6563,12 @@
         }
       ]
     }
-  ]
+  ],
+  "audio": {
+    "wav": "audio/Pinkfong-Babyshark-Anonymous-20190203093900-nonstop2k.com/Pinkfong-Babyshark-Anonymous-20190203093900-nonstop2k.com.wav",
+    "mp3": "audio/Pinkfong-Babyshark-Anonymous-20190203093900-nonstop2k.com/Pinkfong-Babyshark-Anonymous-20190203093900-nonstop2k.com.mp3",
+    "sampleRate": 44100,
+    "bitrate": 320,
+    "source": "browser-soundfont"
+  }
 }

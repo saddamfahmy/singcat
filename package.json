@@ -7,7 +7,12 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "midi:convert": "node scripts/convert-midi-to-json.js"
+    "midi:convert": "node scripts/convert-midi-to-json.js",
+    "test:e2e": "playwright test",
+    "remotion:prepare": "node scripts/prepare-remotion-data.js",
+    "remotion:audio": "node scripts/generate-remotion-audio.js",
+    "remotion:studio": "node scripts/remotion-command.js studio",
+    "remotion:render": "node scripts/remotion-command.js render"
   },
   "dependencies": {
     "express": "^5.1.0",
@@ -15,7 +20,12 @@
     "spessasynth_lib": "^4.3.14"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@remotion/cli": "^4.0.525",
     "@tonejs/midi": "^2.0.28",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "remotion": "^4.0.525"
   }
 }

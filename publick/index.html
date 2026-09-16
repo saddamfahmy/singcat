@@ -95,13 +95,26 @@
       let processorLoaded = false;
       let playbackState = null;
       let masterGain = null;
+      let recordingDestination = null;
       const activeTrackGains = new Map();
       const soundfontSynthesizers = new Map();
 
       const savedRules = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
       const saveRules = (rules) => localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
       const trackKey = (track, index) => `${index}:${track.channel}:${track.instrument.number}:${track.instrument.name}`;
-      const getTrackVolume = (rules, key) => rules.tracks?.[key]?.volume ?? 100;
+      const getTrackVolume = (track, rules, key) => (
+        rules.tracks?.[key]?.volume
+        ?? track.volume
+        ?? track.playback?.volume
+        ?? 100
+      );
+      const getTrackSoundfont = (track, rules, key) => {
+        const trackRules = rules.tracks?.[key];
+        if (trackRules && Object.prototype.hasOwnProperty.call(trackRules, "soundfont")) {
+          return trackRules.soundfont;
+        }
+        return track.soundfont ?? track.playback?.soundfont ?? null;
+      };
       const getGlobalVolume = () => savedRules()[currentFilename]?.globalVolume ?? 100;
       const getPlaybackSpeed = () => savedRules()[currentFilename]?.playbackSpeed ?? 100;
       const getGlobalPitch = () => savedRules()[currentFilename]?.globalPitch ?? 0;
@@ -167,10 +180,10 @@
           };
           await Promise.all(trackIndexes.map(async (index) => {
           const track = songData.tracks[index];
-          const soundfontFile = rules.tracks?.[trackKey(track, index)]?.soundfont;
+          const soundfontFile = getTrackSoundfont(track, rules, trackKey(track, index));
           const soundfontSynth = soundfontFile ? await getSoundfontSynthesizer(soundfontFile) : null;
           const key = trackKey(track, index);
-          const trackVolume = getTrackVolume(rules, key);
+          const trackVolume = getTrackVolume(track, rules, key);
           if (soundfontSynth) soundfontSynth.controllerChange(track.channel, 7, Math.round(trackVolume * 1.27));
           track.notes.forEach((note) => {
             if (note.time + note.duration <= offset) {
@@ -213,10 +226,12 @@
             playbackState = null;
             statusElement.textContent = "Playback selesai.";
           }, Math.max(0.2, (songData.duration - offset) / (speed / 100) + .2) * 1000);
-        } catch (error) {
-          stopAll("Playback gagal.");
-          console.error(error);
-        }
+            return true;
+          } catch (error) {
+            stopAll("Playback gagal.");
+            console.error(error);
+            return false;
+          }
       }
 
       function renderTracks() {
@@ -226,8 +241,8 @@
           const key = trackKey(track, index);
           const row = document.createElement("div");
           row.className = "track";
-          const selectedSoundfont = rules.tracks?.[key]?.soundfont;
-          const trackVolume = getTrackVolume(rules, key);
+          const selectedSoundfont = getTrackSoundfont(track, rules, key);
+          const trackVolume = getTrackVolume(track, rules, key);
           row.innerHTML = `
             <input class="track-enabled" data-index="${index}" type="checkbox" ${rules[key] !== false ? "checked" : ""} aria-label="Mainkan channel ${index + 1}">
             <div><span class="track-name">Channel ${track.channel + 1}: ${track.instrument.name}</span>
@@ -247,7 +262,7 @@
             persistVolume(key, volume);
             const gain = activeTrackGains.get(key);
             if (gain) gain.gain.setTargetAtTime(volume / 100, audioContext.currentTime, .015);
-            const selected = savedRules()[currentFilename]?.tracks?.[key]?.soundfont;
+            const selected = getTrackSoundfont(track, savedRules()[currentFilename] || {}, key);
             const trackSynth = selected ? soundfontSynthesizers.get(selected) : null;
             if (trackSynth) trackSynth.controllerChange(track.channel, 7, Math.round(Math.min(volume, 100) * 1.27));
           });
@@ -422,15 +437,84 @@
               },
               enabled: rules[key] !== false,
               volume: trackRules.volume ?? 100,
-              soundfont: trackRules.soundfont || null,
-              playback: trackRules.soundfont
-                ? { engine: "spessasynth", soundfont: trackRules.soundfont }
+              soundfont: getTrackSoundfont(track, rules, key),
+              playback: getTrackSoundfont(track, rules, key)
+                ? { engine: "spessasynth", soundfont: getTrackSoundfont(track, rules, key) }
                 : { engine: "oscillator", soundfont: null },
               notes: track.notes
             };
           })
         };
       }
+
+      function selectedTrackIndexes() {
+        return songData.tracks
+          .map((track, index) => ({ track, index }))
+          .filter(({ track, index }) => {
+            const rules = savedRules()[currentFilename] || {};
+            return rules[trackKey(track, index)] !== false;
+          })
+          .map(({ index }) => index);
+      }
+
+      function hasSelectedSoundfont() {
+        const rules = savedRules()[currentFilename] || {};
+        return songData.tracks.some((track, index) => (
+          rules[trackKey(track, index)] !== false
+          && getTrackSoundfont(track, rules, trackKey(track, index))
+        ));
+      }
+
+      async function recordBrowserAudio() {
+        if (!window.MediaRecorder) {
+          throw new Error("Browser tidak mendukung perekaman audio.");
+        }
+        audioContext = audioContext || new AudioContext();
+        await audioContext.resume();
+        masterGain = masterGain || audioContext.createGain();
+        masterGain.connect(audioContext.destination);
+        recordingDestination = recordingDestination || audioContext.createMediaStreamDestination();
+        masterGain.connect(recordingDestination);
+
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : "audio/webm";
+        const recorder = new MediaRecorder(recordingDestination.stream, { mimeType });
+        const chunks = [];
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) chunks.push(event.data);
+        };
+        const stopped = new Promise((resolve, reject) => {
+          recorder.onerror = () => reject(new Error("Perekaman audio SoundFont gagal."));
+          recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
+        });
+
+        const speed = getPlaybackSpeed() / 100;
+        recorder.start();
+        const started = await playTracks(selectedTrackIndexes(), 0, false, getPlaybackSpeed(), getGlobalPitch());
+        if (!started) {
+          recorder.stop();
+          await stopped;
+          throw new Error("SoundFont tidak berhasil dimainkan untuk direkam.");
+        }
+        await new Promise((resolve) => setTimeout(resolve, (songData.duration / speed + 1.25) * 1000));
+        recorder.stop();
+        const blob = await stopped;
+        stopAll("Audio SoundFont selesai direkam.");
+        return blob;
+      }
+
+      async function uploadBrowserAudio(blob) {
+        const response = await fetch(`/api/midi-audio?filename=${encodeURIComponent(currentFilename)}`, {
+          method: "POST",
+          headers: { "Content-Type": blob.type || "audio/webm" },
+          body: blob
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Audio SoundFont gagal disimpan.");
+        return result.audio;
+      }
+
       saveJsonButton.addEventListener("click", async () => {
         if (!songData || !currentFilename) {
           statusElement.textContent = "Muat file MIDI terlebih dahulu.";
@@ -445,6 +529,13 @@
           });
           const result = await response.json();
           if (!response.ok) throw new Error(result.error || "Gagal menyimpan JSON");
+          if (hasSelectedSoundfont()) {
+            statusElement.textContent = "Merekam audio dengan SoundFont yang dipilih...";
+            const recordedAudio = await recordBrowserAudio();
+            const audio = await uploadBrowserAudio(recordedAudio);
+            statusElement.textContent = `JSON dan audio SoundFont tersimpan sebagai publick/assets/${result.file}.`;
+            return audio;
+          }
           statusElement.textContent = `JSON animasi tersimpan sebagai publick/assets/${result.file}.`;
         } catch (error) {
           statusElement.textContent = "JSON animasi gagal disimpan.";

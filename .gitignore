@@ -2,3 +2,8 @@ node_modules/
 .env
 npm-debug.log*
 .DS_Store
+src/remotion/song-data.json
+src/remotion/catalog.json
+publick/assets/generated/
+publick/assets/audio/
+test-results/
