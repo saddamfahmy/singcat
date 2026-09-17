@@ -1,6 +1,7 @@
 const path = require("node:path");
 const http = require("node:http");
 const fs = require("node:fs/promises");
+const fsSync = require("node:fs");
 const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 const express = require("express");
@@ -12,7 +13,55 @@ const io = new Server(server);
 const port = process.env.PORT || 3000;
 const assetsPath = path.join(__dirname, "publick", "assets");
 const audioPath = path.join(assetsPath, "audio");
+const catalogPath = path.join(__dirname, "src", "remotion", "catalog.json");
 const execFileAsync = promisify(execFile);
+
+const updateRemotionCatalog = () => {
+  try {
+    const jsonFiles = fsSync.readdirSync(assetsPath)
+      .filter((file) => file.toLowerCase().endsWith(".json"))
+      .map((file) => path.join(assetsPath, file))
+      .sort((left, right) => left.localeCompare(right));
+
+    const catalog = jsonFiles.map((filePath, index) => {
+      const data = JSON.parse(
+        fsSync.readFileSync(filePath, "utf8").replace(/^\uFEFF/, "")
+      );
+
+      if (data.audio) {
+        const audioCandidates = [data.audio.wav, data.audio.mp3]
+          .filter((value) => typeof value === "string" && value.trim());
+        const availableAudio = audioCandidates.find((value) =>
+          fsSync.existsSync(path.join(assetsPath, value.replace(/\//g, path.sep)))
+        );
+        if (availableAudio) {
+          data.audio = {
+            ...data.audio,
+            wav: data.audio.wav?.replace(/\\/g, "/"),
+            mp3: data.audio.mp3?.replace(/\\/g, "/"),
+            selected: `assets/${availableAudio.replace(/\\/g, "/")}`
+          };
+        }
+      }
+
+      const fileName = path.basename(filePath, ".json");
+      const slug = fileName.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "") || `song-${index + 1}`;
+
+      return {
+        id: `SingcatVideo-${slug}`,
+        name: fileName,
+        song: data
+      };
+    });
+
+    fsSync.mkdirSync(path.dirname(catalogPath), { recursive: true });
+    fsSync.writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`, "utf8");
+    return true;
+  } catch (error) {
+    console.error("Error updating Remotion catalog:", error.message);
+    return false;
+  }
+};
 
 app.use(express.json({ limit: "25mb" }));
 app.use(express.static(path.join(__dirname, "publick")));
@@ -55,6 +104,8 @@ app.post("/api/midi-config", async (req, res, next) => {
       `${JSON.stringify({ ...config, audio }, null, 2)}\n`,
       "utf8"
     );
+
+    updateRemotionCatalog();
 
     res.json({
       saved: true,
@@ -129,6 +180,8 @@ app.post(
           source: "browser-soundfont"
         }
       });
+
+      updateRemotionCatalog();
     } catch (error) {
       await fs.rm(temporaryPath, { force: true });
       next(error);
@@ -143,6 +196,19 @@ app.get("/api/status", (req, res) => {
     clients: io.engine.clientsCount,
     timestamp: new Date().toISOString()
   });
+});
+
+app.post("/api/refresh-catalog", (req, res, next) => {
+  try {
+    const success = updateRemotionCatalog();
+    if (success) {
+      res.json({ success: true, message: "Catalog updated" });
+    } else {
+      res.status(500).json({ error: "Failed to update catalog" });
+    }
+  } catch (error) {
+    next(error);
+  }
 });
 
 io.on("connection", (socket) => {
@@ -161,6 +227,8 @@ io.on("connection", (socket) => {
     console.log(`Client disconnected: ${socket.id}`);
   });
 });
+
+updateRemotionCatalog();
 
 server.listen(port, () => {
   console.log(`Singcat server running at http://localhost:${port}`);
