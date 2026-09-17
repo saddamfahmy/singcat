@@ -5,7 +5,7 @@
   "duration": 20.454525,
   "global": {
     "volume": 100,
-    "speed": 93,
+    "speed": 100,
     "pitch": 12
   },
   "tracks": [
@@ -20,7 +20,7 @@
       },
       "enabled": true,
       "volume": 200,
-      "soundfont": null,
+      "soundfont": "",
       "playback": {
         "engine": "oscillator",
         "soundfont": null

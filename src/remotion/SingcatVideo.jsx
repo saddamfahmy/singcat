@@ -161,13 +161,19 @@ const brightBackgrounds = [
   ["#fdf4ff", "#f5d0fe", "#e9d5ff"],
   ["#fff1f2", "#fecdd3", "#fda4af"]
 ];
-const backgroundSeed = globalThis.__SINGCAT_BACKGROUND_SEED
-  ?? (globalThis.__SINGCAT_BACKGROUND_SEED = Math.random());
-const backgroundIndex = Math.floor(backgroundSeed * brightBackgrounds.length);
+const backgroundIndexFor = (song) => {
+  const source = String(song?.source || "singcat-midi");
+  const hash = [...source].reduce(
+    (value, character) => (value * 31 + character.charCodeAt(0)) >>> 0,
+    7
+  );
+  return hash % brightBackgrounds.length;
+};
 
 export const SingcatVideo = ({ song }) => {
   const frame = useCurrentFrame();
   const { fps, height, width } = useVideoConfig();
+  const backgroundIndex = backgroundIndexFor(song);
   const playbackSpeed = Math.max(0.01, (song.global?.speed ?? song.playbackSpeed ?? 100) / 100);
   const elapsed = frame / fps;
   const sourceTime = elapsed * playbackSpeed;
