@@ -177,7 +177,11 @@ export const SingcatVideo = ({ song }) => {
     || song.audio?.wav
     || song.audio?.mp3
     || "assets/generated/singcat-remotion.wav";
-  if (song.audio?.source === "browser-soundfont" && !song.audio?.selected) {
+  if (
+    song.audio?.source === "browser-soundfont"
+    && !song.audio?.selected
+    && song.audio?.fallback !== "synthetic"
+  ) {
     throw new Error("Saved browser SoundFont audio is missing from the Remotion asset path.");
   }
   const visibleTracks = useMemo(

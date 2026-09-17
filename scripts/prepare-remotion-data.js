@@ -26,6 +26,7 @@ const jsonPath = requestedPath === defaultJsonPath && !fs.existsSync(defaultJson
 const outputPath = path.join(__dirname, "..", "src", "remotion", "song-data.json");
 const catalogPath = path.join(__dirname, "..", "src", "remotion", "catalog.json");
 const assetsPath = path.join(__dirname, "..", "publick", "assets");
+const allowSyntheticAudioFallback = process.env.SINGCAT_ALLOW_SYNTHETIC_AUDIO === "1";
 
 if (!fs.existsSync(jsonPath)) {
   throw new Error(`JSON MIDI tidak ditemukan: ${jsonPath}`);
@@ -50,10 +51,10 @@ const normalizeData = (filePath, { allowMissingAudio = false } = {}) => {
         mp3: data.audio.mp3?.replace(/\\/g, "/"),
         selected: `assets/${availableAudio.replace(/\\/g, "/")}`
       };
-    } else if (allowMissingAudio) {
+    } else if (allowMissingAudio || allowSyntheticAudioFallback) {
       data.audio = {
-        ...data.audio,
-        available: false
+        available: false,
+        fallback: "synthetic"
       };
     } else {
       throw new Error(
@@ -64,7 +65,7 @@ const normalizeData = (filePath, { allowMissingAudio = false } = {}) => {
   return data;
 };
 
-const data = normalizeData(jsonPath);
+const data = normalizeData(jsonPath, { allowMissingAudio: allowSyntheticAudioFallback });
 const jsonFiles = fs.readdirSync(assetsPath)
   .filter((file) => file.toLowerCase().endsWith(".json"))
   .map((file) => path.join(assetsPath, file))

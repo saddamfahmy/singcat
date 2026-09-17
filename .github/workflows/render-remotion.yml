@@ -38,6 +38,8 @@ jobs:
         run: npm ci
 
       - name: Prepare Remotion data
+        env:
+          SINGCAT_ALLOW_SYNTHETIC_AUDIO: "1"
         run: npm run remotion:prepare
 
       - name: Generate Remotion audio
