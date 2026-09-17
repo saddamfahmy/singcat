@@ -1,7 +1,6 @@
 import React from "react";
 import { Composition } from "remotion";
 import catalog from "./catalog.json";
-import songData from "./song-data.json";
 import { SingcatVideo } from "./SingcatVideo";
 
 const fps = 30;
@@ -26,7 +25,7 @@ const composition = (id, name, song) => (
 
 export const RemotionRoot = () => (
   <>
-    {composition("SingcatVideo", catalog[0]?.name || "SingcatVideo", songData)}
+    {catalog[0] && composition("SingcatVideo", catalog[0].name, catalog[0].song)}
     {catalog.map((item) => composition(item.id, item.name, item.song))}
   </>
 );

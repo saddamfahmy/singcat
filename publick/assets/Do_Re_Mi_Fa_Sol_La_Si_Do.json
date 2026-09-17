@@ -1,0 +1,182 @@
+{
+  "type": "singcat-midi-animation",
+  "version": 1,
+  "source": "Do Re Mi Fa Sol La Si Do.mid",
+  "duration": 20.454525,
+  "global": {
+    "volume": 100,
+    "speed": 93,
+    "pitch": 12
+  },
+  "tracks": [
+    {
+      "index": 0,
+      "channel": 0,
+      "name": "Steel Drums",
+      "instrument": {
+        "name": "steel drums",
+        "family": "percussive",
+        "number": 114
+      },
+      "enabled": true,
+      "volume": 200,
+      "soundfont": null,
+      "playback": {
+        "engine": "oscillator",
+        "soundfont": null
+      },
+      "notes": [
+        {
+          "midi": 60,
+          "time": 1.090908,
+          "duration": 0.13636350000000008,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 62,
+          "time": 2.72727,
+          "duration": 0.1363635000000003,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 64,
+          "time": 3.6818144999999998,
+          "duration": 0.1363635000000003,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 65,
+          "time": 4.636359,
+          "duration": 0.13636349999999986,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 67,
+          "time": 5.3181765,
+          "duration": 0.13636349999999986,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 69,
+          "time": 5.8636305,
+          "duration": 0.13636349999999986,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 71,
+          "time": 6.6818115,
+          "duration": 0.13636349999999986,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 72,
+          "time": 7.636356,
+          "duration": 0.13636349999999986,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 74,
+          "time": 8.727264,
+          "duration": 0.13636349999999986,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 76,
+          "time": 9.9545355,
+          "duration": 0.13636349999999986,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 77,
+          "time": 11.0454435,
+          "duration": 0.13636349999999986,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 79,
+          "time": 12.1363515,
+          "duration": 0.13636349999999986,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 81,
+          "time": 13.2272595,
+          "duration": 0.13636349999999986,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 83,
+          "time": 13.7727135,
+          "duration": 0.13636349999999986,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 84,
+          "time": 14.454531,
+          "duration": 0.13636349999999986,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 86,
+          "time": 14.999985,
+          "duration": 0.13636349999999986,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 88,
+          "time": 15.6818025,
+          "duration": 0.13636349999999986,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 89,
+          "time": 16.36362,
+          "duration": 0.13636349999999808,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 91,
+          "time": 17.454528,
+          "duration": 0.13636350000000164,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 93,
+          "time": 17.8636185,
+          "duration": 0.13636349999999808,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 95,
+          "time": 18.272709,
+          "duration": 0.13636350000000164,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 96,
+          "time": 18.9545265,
+          "duration": 0.13636349999999808,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 98,
+          "time": 19.7727075,
+          "duration": 0.13636350000000164,
+          "velocity": 0.3937007874015748
+        },
+        {
+          "midi": 100,
+          "time": 20.3181615,
+          "duration": 0.13636350000000164,
+          "velocity": 0.3937007874015748
+        }
+      ]
+    }
+  ],
+  "audio": {
+    "wav": "audio/Do_Re_Mi_Fa_Sol_La_Si_Do/Do_Re_Mi_Fa_Sol_La_Si_Do.wav",
+    "mp3": "audio/Do_Re_Mi_Fa_Sol_La_Si_Do/Do_Re_Mi_Fa_Sol_La_Si_Do.mp3",
+    "sampleRate": 44100,
+    "bitrate": 320
+  }
+}

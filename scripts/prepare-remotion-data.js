@@ -31,7 +31,7 @@ if (!fs.existsSync(jsonPath)) {
   throw new Error(`JSON MIDI tidak ditemukan: ${jsonPath}`);
 }
 
-const normalizeData = (filePath) => {
+const normalizeData = (filePath, { allowMissingAudio = false } = {}) => {
   const data = JSON.parse(fs.readFileSync(filePath, "utf8").replace(/^\uFEFF/, ""));
   if (!Number.isFinite(data.duration) || !Array.isArray(data.tracks)) {
     throw new Error(`JSON MIDI harus memiliki duration dan tracks: ${filePath}`);
@@ -50,6 +50,11 @@ const normalizeData = (filePath) => {
         mp3: data.audio.mp3?.replace(/\\/g, "/"),
         selected: `assets/${availableAudio.replace(/\\/g, "/")}`
       };
+    } else if (allowMissingAudio) {
+      data.audio = {
+        ...data.audio,
+        available: false
+      };
     } else {
       throw new Error(
         `Audio tersimpan tidak ditemukan untuk ${filePath}: ${audioCandidates.join(", ")}`
@@ -60,14 +65,14 @@ const normalizeData = (filePath) => {
 };
 
 const data = normalizeData(jsonPath);
-const jsonFiles = process.argv.some((value) => value.startsWith("--json="))
-  ? [jsonPath]
-  : fs.readdirSync(assetsPath)
-    .filter((file) => file.toLowerCase().endsWith(".json"))
-    .map((file) => path.join(assetsPath, file))
-    .sort((left, right) => left.localeCompare(right));
+const jsonFiles = fs.readdirSync(assetsPath)
+  .filter((file) => file.toLowerCase().endsWith(".json"))
+  .map((file) => path.join(assetsPath, file))
+  .sort((left, right) => left.localeCompare(right));
 const catalog = jsonFiles.map((filePath, index) => {
-  const song = filePath === jsonPath ? data : normalizeData(filePath);
+  const song = filePath === jsonPath
+    ? data
+    : normalizeData(filePath, { allowMissingAudio: true });
   const fileName = path.basename(filePath, ".json");
   const slug = fileName.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "") || `song-${index + 1}`;
   return {
