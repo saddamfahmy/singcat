@@ -16,8 +16,8 @@ const composition = (id, name, song) => (
     component={SingcatVideo}
     durationInFrames={durationInFrames(song)}
     fps={fps}
-    width={1280}
-    height={720}
+    width={3840}
+    height={2160}
     defaultProps={{ song }}
     calculateMetadata={() => ({ props: { song }, displayName: name })}
   />

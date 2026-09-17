@@ -1,0 +1,63 @@
+name: Render Remotion video
+
+on:
+  workflow_dispatch:
+    inputs:
+      composition:
+        description: Remotion composition ID
+        required: true
+        default: SingcatVideo
+        type: string
+      output_name:
+        description: Output MP4 filename
+        required: true
+        default: singcat-4k.mp4
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare Remotion data
+        run: npm run remotion:prepare
+
+      - name: Generate Remotion audio
+        run: node scripts/generate-remotion-audio.js
+
+      - name: Render 4K MP4
+        shell: bash
+        env:
+          COMPOSITION: ${{ inputs.composition }}
+          OUTPUT_NAME: ${{ inputs.output_name }}
+        run: |
+          mkdir -p out
+          npx remotion render src/remotion/index.jsx "$COMPOSITION" "out/$OUTPUT_NAME" \
+            --public-dir publick \
+            --codec=h264 \
+            --concurrency=2
+
+      - name: Upload rendered video
+        uses: actions/upload-artifact@v4
+        with:
+          name: remotion-4k-video
+          path: out/${{ inputs.output_name }}
+          if-no-files-found: error
