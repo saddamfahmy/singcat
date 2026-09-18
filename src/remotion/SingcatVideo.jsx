@@ -400,7 +400,7 @@ export const SingcatVideo = ({ song }) => {
                       position: "relative",
                       width: `${characterCellWidth}px`,
                       zIndex: 1,
-                      scale: 0.001
+                      scale: 1.05
                     }}
                   />
                 </div>
