@@ -399,7 +399,8 @@ export const SingcatVideo = ({ song }) => {
                       objectFit: "contain",
                       position: "relative",
                       width: `${characterCellWidth}px`,
-                      zIndex: 1
+                      zIndex: 1,
+                      scale: 0.001
                     }}
                   />
                 </div>
