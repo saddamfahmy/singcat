@@ -13,7 +13,7 @@ const fallbackJsonPath = path.join(
   "..",
   "publick",
   "assets",
-  "Pinkfong-Babyshark-Anonymous-20190203093900-nonstop2k.com.json"
+  "BABY_SHARK.json"
 );
 const argument = process.argv.slice(2).find((value) => value.startsWith("--json="));
 const requestedPath = argument ? argument.slice("--json=".length) : defaultJsonPath;

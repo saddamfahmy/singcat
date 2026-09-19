@@ -4,28 +4,40 @@ import catalog from "./catalog.json";
 import { SingcatVideo } from "./SingcatVideo";
 
 const fps = 30;
+export const INTRO_FRAMES = 150; // 5 Detik (2s Judul + 3s Hitung Mundur)
+export const OUTRO_FRAMES = 60;  // 2 Detik Jeda setelah lagu selesai
 
-const durationInFrames = (song) => {
+const calculateTotalDuration = (song) => {
   const speed = Math.max(0.01, (song.global?.speed ?? song.playbackSpeed ?? 100) / 100);
-  return Math.max(1, Math.ceil((song.duration || 1) / speed * fps));
+  const songFrames = Math.max(1, Math.ceil((song.duration || 1) / speed * fps));
+  return INTRO_FRAMES + songFrames + OUTRO_FRAMES;
 };
 
-const composition = (id, name, song) => (
-  <Composition
-    id={id}
-    component={SingcatVideo}
-    durationInFrames={durationInFrames(song)}
-    fps={fps}
-    width={3840}
-    height={2160}
-    defaultProps={{ song }}
-    calculateMetadata={() => ({ props: { song }, displayName: name })}
-  />
-);
+export const RemotionRoot = () => {
+  return (
+    <>
+      {catalog.map((item, index) => {
+        // Mencegah error Duplicate Composition ID
+        const compId = item.id || `SingcatVideo-${index}`;
+        const songTitle = item.name || item.song?.title || "Singcat Music";
 
-export const RemotionRoot = () => (
-  <>
-    {catalog[0] && composition("SingcatVideo", catalog[0].name, catalog[0].song)}
-    {catalog.map((item) => composition(item.id, item.name, item.song))}
-  </>
-);
+        return (
+          <Composition
+            key={compId}
+            id={compId}
+            component={SingcatVideo}
+            durationInFrames={calculateTotalDuration(item.song)}
+            fps={fps}
+            width={3840}
+            height={2160}
+            defaultProps={{ song: item.song, title: songTitle }}
+            calculateMetadata={() => ({
+              props: { song: item.song, title: songTitle },
+              displayName: songTitle,
+            })}
+          />
+        );
+      })}
+    </>
+  );
+};
