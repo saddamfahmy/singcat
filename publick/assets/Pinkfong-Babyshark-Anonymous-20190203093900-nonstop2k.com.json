@@ -6,7 +6,7 @@
   "global": {
     "volume": 100,
     "speed": 100,
-    "pitch": 0
+    "pitch": -5
   },
   "tracks": [
     {
@@ -20,10 +20,10 @@
       },
       "enabled": true,
       "volume": 200,
-      "soundfont": "MEOW.sf2",
+      "soundfont": "Thurston_Waffles.sf2",
       "playback": {
         "engine": "spessasynth",
-        "soundfont": "MEOW.sf2"
+        "soundfont": "Thurston_Waffles.sf2"
       },
       "notes": [
         {
@@ -3393,10 +3393,10 @@
       },
       "enabled": true,
       "volume": 200,
-      "soundfont": "MEOW.sf2",
+      "soundfont": "Thurston_Waffles.sf2",
       "playback": {
         "engine": "spessasynth",
-        "soundfont": "MEOW.sf2"
+        "soundfont": "Thurston_Waffles.sf2"
       },
       "notes": [
         {

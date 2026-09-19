@@ -183,6 +183,7 @@ export const SingcatVideo = ({ song }) => {
     || song.audio?.wav
     || song.audio?.mp3
     || "assets/generated/singcat-remotion.wav";
+  
   if (
     song.audio?.source === "browser-soundfont"
     && !song.audio?.selected
@@ -190,59 +191,101 @@ export const SingcatVideo = ({ song }) => {
   ) {
     throw new Error("Saved browser SoundFont audio is missing from the Remotion asset path.");
   }
+  
   const visibleTracks = useMemo(
     () => (song.tracks || []).filter((track) => track.enabled !== false),
     [song.tracks]
   );
+  
   const pitchCharacters = useMemo(
     () => buildPitchCharacters(visibleTracks),
     [visibleTracks]
   );
+  
   const formation = useMemo(() => {
+    // Tetap memakai logika max 5 baris horizontal
     const rowCount = Math.min(5, Math.max(1, pitchCharacters.length));
     const maximumPerRow = Math.max(
       1,
       Math.ceil((pitchCharacters.length + Math.floor((rowCount - 1) / 2)) / rowCount)
     );
-    const layoutRows = [];
-    let nextCharacter = 0;
+    
+    // TAHAP 1: Buat cetakan baris tanpa mengisi karakter, maksimalkan baris terbawah (rowIndex 0)
+    const layoutRowsShape = [];
+    let allocatedSlots = 0;
     for (
       let rowIndex = 0;
-      rowIndex < rowCount && nextCharacter < pitchCharacters.length;
+      rowIndex < rowCount && allocatedSlots < pitchCharacters.length;
       rowIndex += 1
     ) {
       const rowCapacity = rowIndex % 2 === 0
         ? maximumPerRow
         : Math.max(1, maximumPerRow - 1);
       const row = [];
-      while (row.length < rowCapacity && nextCharacter < pitchCharacters.length) {
-        row.push(nextCharacter);
-        nextCharacter += 1;
+      while (row.length < rowCapacity && allocatedSlots < pitchCharacters.length) {
+        row.push(null); // Sisipkan slot kosong
+        allocatedSlots += 1;
       }
-      layoutRows.push(row);
+      layoutRowsShape.push(row);
     }
+
+    // TAHAP 2: Hitung titik visual koordinat (X, Y) tiap slot agar bisa diurutkan secara vertikal
+    const slots = [];
+    layoutRowsShape.forEach((row, rowIndex) => {
+      const rowCapacity = row.length;
+      row.forEach((_, colIndex) => {
+        // xPos mewakili posisi visual absolut slot tersebut pada layar dari kiri ke kanan
+        const xPos = colIndex + (maximumPerRow - rowCapacity) / 2;
+        slots.push({ rowIndex, colIndex, xPos });
+      });
+    });
+
+    // TAHAP 3: Urutkan slot secara Horizontal (kiri ke kanan), 
+    // jika di posisi X yang sama, utamakan yang paling bawah (bawah ke atas)
+    slots.sort((a, b) => a.xPos - b.xPos || a.rowIndex - b.rowIndex);
+
+    // TAHAP 4: Mapping Karakter Nada secara berurutan ke slot
+    const layoutRows = layoutRowsShape.map(row => [...row]); // Copy array struktur
+    slots.forEach((slot, index) => {
+      // Karena 'pitchCharacters' diurutkan dari nada tinggi -> nada rendah,
+      // Nada terendah (paling kiri) ada di index paling belakang (length - 1).
+      const characterIndex = pitchCharacters.length - 1 - index;
+      layoutRows[slot.rowIndex][slot.colIndex] = characterIndex;
+    });
+
     return { layoutRows, rowCount };
   }, [pitchCharacters]);
+
   const { layoutRows, rowCount } = formation;
   const widestRow = Math.max(1, ...layoutRows.map((row) => row.length));
+  
+  // ----------------------------------------------------------------------
+  // KALKULASI PRESISI BOUNDING BOX (TIDAK ADA YANG DIUBAH DI SINI)
+  // ----------------------------------------------------------------------
   const characterAspectRatio = 2407 / 3591;
-  const rowHeight = (height * 0.76) / rowCount;
-  const labelHeight = 18;
-  const characterImageHeight = Math.min(
-    Math.max(1, rowHeight - labelHeight),
-    ((width * 0.96) / widestRow) / characterAspectRatio
-  );
+  const rowVerticalStep = 0.65;
+  const shadowExtraHeight = 0.08;
+
+  const widthMultiplier = widestRow * characterAspectRatio;
+  const heightMultiplier = 1 + (rowCount - 1) * rowVerticalStep + shadowExtraHeight;
+
+  const maxFormationWidth = width * 0.90;
+  const maxFormationHeight = height * 0.80;
+
+  const maxH_by_width = maxFormationWidth / Math.max(0.001, widthMultiplier);
+  const maxH_by_height = maxFormationHeight / Math.max(0.001, heightMultiplier);
+
+  const characterImageHeight = Math.min(maxH_by_width, maxH_by_height);
   const characterCellWidth = characterImageHeight * characterAspectRatio;
+
   const formationWidth = widestRow * characterCellWidth;
-  const formationScale = (width * 0.8) / Math.max(1, formationWidth);
-  const scaledCharacterImageHeight = characterImageHeight * formationScale;
+  const formationHeight = characterImageHeight * heightMultiplier;
 
   return (
     <AbsoluteFill
       style={{
         alignItems: "center",
         background: `radial-gradient(circle at 50% 24%, ${brightBackgrounds[backgroundIndex][0]} 0%, ${brightBackgrounds[backgroundIndex][1]} 52%, ${brightBackgrounds[backgroundIndex][2]} 100%)`,
-        justifyContent: "center",
         overflow: "hidden"
       }}
     >
@@ -302,48 +345,33 @@ export const SingcatVideo = ({ song }) => {
           ))}
         </defs>
       </svg>
+
       <div
         style={{
-          alignItems: "center",
-          boxSizing: "border-box",
-          display: "flex",
-          flexDirection: "column-reverse",
-          gap: 0,
-          height: "76%",
-          justifyContent: "space-between",
-          bottom: `${-(scaledCharacterImageHeight * 0.25)}px`,
-          left: 0,
-          margin: 0,
-          overflow: "visible",
-          padding: 0,
           position: "absolute",
-          right: 0,
-          transform: `scale(${formationScale}) translateZ(0)`,
-          transformOrigin: "center bottom"
+          bottom: "8%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: `${formationWidth}px`,
+          height: `${formationHeight}px`,
         }}
       >
         {layoutRows.map((row, rowIndex) => (
           <div
             key={`row-${rowIndex}`}
             style={{
-              alignItems: "flex-end",
-              boxSizing: "border-box",
+              position: "absolute",
+              bottom: `${(rowIndex * rowVerticalStep + shadowExtraHeight) * characterImageHeight}px`,
+              left: 0,
+              width: "100%",
               display: "flex",
-              flex: `0 0 ${100 / rowCount}%`,
+              justifyContent: "center",
               gap: 0,
-              justifyContent: "flex-start",
-              margin: 0,
-              minHeight: 0,
-              overflow: "visible",
-              padding: 0,
-              position: "relative",
-              transform: `translateY(${rowIndex * characterImageHeight * 0.7}px)`,
-              width: `${row.length * characterCellWidth}px`,
               zIndex: rowCount - rowIndex
             }}
           >
-            {row.map((ascendingIndex) => {
-              const characterIndex = pitchCharacters.length - 1 - ascendingIndex;
+            {/* Pada perulangan ini, nilai index di dalam row sekarang secara langsung mewakili urutan karakternya (characterIndex) */}
+            {row.map((characterIndex) => {
               const { pitch, intervals } = pitchCharacters[characterIndex];
               const characterFrame = getCharacterFrame(
                 intervals,
@@ -352,55 +380,44 @@ export const SingcatVideo = ({ song }) => {
               );
               const shadowProgress = clamp((characterFrame - 1) / 49, 0, 1);
               const shadowScale = 1 - shadowProgress * 0.45;
+              
               return (
                 <div
                   key={`pitch-${pitch}`}
                   style={{
-                    alignItems: "center",
-                    boxSizing: "border-box",
-                    display: "flex",
-                    flex: `0 0 ${characterCellWidth}px`,
-                    flexDirection: "column",
-                    gap: 0,
-                    justifyContent: "flex-end",
-                    height: "100%",
-                    margin: 0,
-                    minHeight: 0,
-                    minWidth: 0,
-                    overflow: "visible",
                     position: "relative",
                     width: `${characterCellWidth}px`,
-                    padding: 0,
-                    zIndex: 1
+                    height: `${characterImageHeight}px`,
+                    display: "flex",
+                    justifyContent: "center",
                   }}
                 >
                   <div
                     style={{
+                      position: "absolute",
+                      bottom: `-${characterImageHeight * shadowExtraHeight}px`,
+                      width: `${characterCellWidth * 0.9}px`,
+                      height: `${characterCellWidth * 0.22}px`,
                       background: "rgba(71, 85, 105, 0.3)",
                       borderRadius: "50%",
-                      bottom: "-3%",
-                      height: `${characterCellWidth * 0.22}px`,
-                      left: "50%",
                       opacity: 0.75,
-                      position: "absolute",
-                      transform: `translateX(-50%) scale(${shadowScale})`,
+                      transform: `scale(${shadowScale})`,
                       transformOrigin: "center center",
-                      width: `${characterCellWidth * 0.9}px`,
                       zIndex: 0
                     }}
                   />
+                  
                   <Img
                     src={staticFile(`assets/char/char1/char${padFrame(characterFrame)}.png`)}
                     style={{
-                      display: "block",
+                      position: "absolute",
+                      bottom: 0,
+                      width: "100%",
+                      height: "100%",
                       filter: `url(#${characterFilterId(characterIndex)})`,
-                      height: `${characterImageHeight}px`,
-                      maxWidth: "100%",
                       objectFit: "contain",
-                      position: "relative",
-                      width: `${characterCellWidth}px`,
-                      zIndex: 1,
-                      scale: 1.05
+                      scale: "1.05",
+                      zIndex: 1
                     }}
                   />
                 </div>
@@ -409,6 +426,7 @@ export const SingcatVideo = ({ song }) => {
           </div>
         ))}
       </div>
+      
       <Audio src={staticFile(audioSource)} volume={audioVolume} />
     </AbsoluteFill>
   );

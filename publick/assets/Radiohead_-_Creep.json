@@ -5,8 +5,8 @@
   "duration": 230.41992319270835,
   "global": {
     "volume": 100,
-    "speed": 100,
-    "pitch": 0
+    "speed": 121,
+    "pitch": 12
   },
   "tracks": [
     {
@@ -20,10 +20,10 @@
       },
       "enabled": true,
       "volume": 100,
-      "soundfont": "Cat_Meow.sf2",
+      "soundfont": "ChoriumRevA.sf2",
       "playback": {
         "engine": "spessasynth",
-        "soundfont": "Cat_Meow.sf2"
+        "soundfont": "ChoriumRevA.sf2"
       },
       "notes": [
         {
@@ -4023,10 +4023,10 @@
       },
       "enabled": true,
       "volume": 100,
-      "soundfont": "Thurston_Waffles.sf2",
+      "soundfont": "ChoriumRevA.sf2",
       "playback": {
         "engine": "spessasynth",
-        "soundfont": "Thurston_Waffles.sf2"
+        "soundfont": "ChoriumRevA.sf2"
       },
       "notes": [
         {
@@ -7186,10 +7186,10 @@
       },
       "enabled": true,
       "volume": 100,
-      "soundfont": "Thurston_Waffles.sf2",
+      "soundfont": "MEOW.sf2",
       "playback": {
         "engine": "spessasynth",
-        "soundfont": "Thurston_Waffles.sf2"
+        "soundfont": "MEOW.sf2"
       },
       "notes": [
         {
@@ -7955,10 +7955,10 @@
       },
       "enabled": true,
       "volume": 100,
-      "soundfont": null,
+      "soundfont": "MEOW.sf2",
       "playback": {
-        "engine": "oscillator",
-        "soundfont": null
+        "engine": "spessasynth",
+        "soundfont": "MEOW.sf2"
       },
       "notes": [
         {
@@ -8460,10 +8460,10 @@
       },
       "enabled": true,
       "volume": 100,
-      "soundfont": null,
+      "soundfont": "ChoriumRevA.sf2",
       "playback": {
-        "engine": "oscillator",
-        "soundfont": null
+        "engine": "spessasynth",
+        "soundfont": "ChoriumRevA.sf2"
       },
       "notes": [
         {
@@ -8659,10 +8659,10 @@
       },
       "enabled": true,
       "volume": 100,
-      "soundfont": null,
+      "soundfont": "ChoriumRevA.sf2",
       "playback": {
-        "engine": "oscillator",
-        "soundfont": null
+        "engine": "spessasynth",
+        "soundfont": "ChoriumRevA.sf2"
       },
       "notes": [
         {
@@ -11216,10 +11216,10 @@
       },
       "enabled": true,
       "volume": 100,
-      "soundfont": "Thurston_Waffles.sf2",
+      "soundfont": "ChoriumRevA.sf2",
       "playback": {
         "engine": "spessasynth",
-        "soundfont": "Thurston_Waffles.sf2"
+        "soundfont": "ChoriumRevA.sf2"
       },
       "notes": [
         {
@@ -13605,10 +13605,10 @@
       },
       "enabled": true,
       "volume": 100,
-      "soundfont": null,
+      "soundfont": "MEOW.sf2",
       "playback": {
-        "engine": "oscillator",
-        "soundfont": null
+        "engine": "spessasynth",
+        "soundfont": "MEOW.sf2"
       },
       "notes": [
         {
@@ -14836,10 +14836,10 @@
       },
       "enabled": true,
       "volume": 100,
-      "soundfont": null,
+      "soundfont": "ChoriumRevA.sf2",
       "playback": {
-        "engine": "oscillator",
-        "soundfont": null
+        "engine": "spessasynth",
+        "soundfont": "ChoriumRevA.sf2"
       },
       "notes": [
         {
@@ -15107,10 +15107,10 @@
       },
       "enabled": true,
       "volume": 100,
-      "soundfont": null,
+      "soundfont": "Thurston_Waffles.sf2",
       "playback": {
-        "engine": "oscillator",
-        "soundfont": null
+        "engine": "spessasynth",
+        "soundfont": "Thurston_Waffles.sf2"
       },
       "notes": [
         {
@@ -15144,10 +15144,10 @@
       },
       "enabled": true,
       "volume": 100,
-      "soundfont": null,
+      "soundfont": "ChoriumRevA.sf2",
       "playback": {
-        "engine": "oscillator",
-        "soundfont": null
+        "engine": "spessasynth",
+        "soundfont": "ChoriumRevA.sf2"
       },
       "notes": [
         {

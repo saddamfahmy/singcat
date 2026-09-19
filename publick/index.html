@@ -12,20 +12,33 @@
       h1 { margin: 0 0 8px; font-size: clamp(2rem,5vw,3.6rem); }
       h2 { margin: 0 0 14px; font-size: 1.1rem; }
       p { color: var(--muted); line-height: 1.6; }
-      .drop-zone { padding: 32px 20px; text-align: center; border: 2px dashed #64748b; border-radius: 16px; cursor: pointer; background: rgba(139,92,246,.08); }
+      
+      .drop-zone { padding: 32px 20px; text-align: center; border: 2px dashed #64748b; border-radius: 16px; cursor: pointer; background: rgba(139,92,246,.08); display: block; }
       .drop-zone.dragging { border-color: #c4b5fd; background: rgba(139,92,246,.2); }
       .drop-zone strong { color: #c4b5fd; }
+      
+      /* Progress Bar Styles */
+      #progress-container { display: none; width: 100%; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden; margin: 16px 0; height: 12px; border: 1px solid var(--border); }
+      #progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, var(--accent), #c4b5fd); transition: width 0.3s ease; box-shadow: 0 0 10px rgba(139,92,246,.5); }
+      
       .toolbar, .track-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
       .toolbar { margin: 18px 0; }
-      button { padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; color: var(--text); background: transparent; cursor: pointer; font-weight: 700; }
+      button { padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; color: var(--text); background: transparent; cursor: pointer; font-weight: 700; transition: all 0.2s; }
       button.primary { border: 0; background: linear-gradient(135deg,var(--accent),#a78bfa); }
-      button:hover { filter: brightness(1.12); }
-      button:disabled { cursor: not-allowed; opacity: .45; }
-      .status { min-height: 1.4em; color: var(--muted); }
+      button:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-1px); }
+      button:disabled { cursor: not-allowed; opacity: .45; background: #374151; }
+      .status { min-height: 1.4em; color: var(--muted); font-weight: 600; }
+      
       .tracks { display: grid; gap: 10px; }
       .track { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: rgba(31,41,55,.72); }
-      .track-name { font-weight: 700; }
+      .track-name { font-weight: 700; display: flex; align-items: center; }
       .track-meta { display: block; margin-top: 4px; color: var(--muted); font-size: .85rem; }
+      
+      /* Status Ready/Loading Indicator */
+      .track-status { font-size: 0.7rem; padding: 3px 8px; border-radius: 6px; font-weight: bold; margin-left: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+      .track-status.ready { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+      .track-status.loading { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+      
       .track-actions button { padding: 7px 10px; font-size: .8rem; }
       .soundfont-mark { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
       .soundfont-mark button { padding: 5px 7px; font-size: .72rem; }
@@ -41,13 +54,18 @@
   <body>
     <main>
       <h1>Singcat MIDI Player</h1>
-      <p>Jatuhkan satu file MIDI untuk mengubahnya langsung menjadi JSON dan memilih channel/instrumen yang ingin dimainkan.</p>
+      <p>Jatuhkan satu file MIDI untuk mengubahnya langsung menjadi JSON, melakukan caching instrumen, dan memilih channel yang ingin dimainkan tanpa lag.</p>
 
       <label class="drop-zone" id="drop-zone" for="midi-file">
         <strong>Drag & drop file MIDI di sini</strong><br />
         atau klik untuk memilih file
         <input id="midi-file" type="file" accept=".mid,.midi,audio/midi" hidden />
       </label>
+
+      <!-- Progress Bar untuk Loading & Caching MIDI ke JSON -->
+      <div id="progress-container">
+        <div id="progress-bar"></div>
+      </div>
 
       <div class="toolbar">
         <button class="primary" id="play-selected" type="button" disabled>Play yang dipilih</button>
@@ -57,8 +75,8 @@
         <button id="reset-speed" type="button">Reset tempo</button>
         <label class="volume-control">Nada global <input id="global-pitch" type="range" min="-12" max="12" step="1" value="0"><span id="global-pitch-value">0</span></label>
         <button id="reset-pitch" type="button">Reset nada</button>
-        <button id="save-json" class="primary" type="button">Simpan JSON animasi</button>
-        <span id="song-name" class="status">Belum ada MIDI dimuat.</span>
+        <button id="save-json" class="primary" type="button">Simpan JSON & Audio HD</button>
+        <span id="song-name" class="status" style="display: block; width: 100%; margin-top: 10px;">Belum ada MIDI dimuat.</span>
       </div>
 
       <section>
@@ -75,11 +93,16 @@
       import { WorkletSynthesizer } from "https://esm.sh/spessasynth_lib@4.3.14";
 
       const STORAGE_KEY = "singcat-midi-rules";
+      
+      // Default soundfont sekarang adalah ChoriumRevA
+      const DEFAULT_SOUNDFONT = "ChoriumRevA.sf2";
       const SOUNDFONTS = [
+        { file: "ChoriumRevA.sf2", label: "Chorium (Default)" },
         { file: "Thurston_Waffles.sf2", label: "Thurston" },
         { file: "MEOW.sf2", label: "MEOW" },
         { file: "Cat_Meow.sf2", label: "Cat Meow" }
       ];
+
       const dropZone = document.getElementById("drop-zone");
       const fileInput = document.getElementById("midi-file");
       const tracksElement = document.getElementById("tracks");
@@ -87,6 +110,10 @@
       const songNameElement = document.getElementById("song-name");
       const playSelectedButton = document.getElementById("play-selected");
       const stopAllButton = document.getElementById("stop-all");
+      
+      const progressContainer = document.getElementById("progress-container");
+      const progressBar = document.getElementById("progress-bar");
+
       let songData = null;
       let currentFilename = "";
       let audioContext = null;
@@ -96,28 +123,31 @@
       let playbackState = null;
       let masterGain = null;
       let recordingDestination = null;
-      const activeTrackGains = new Map();
       const soundfontSynthesizers = new Map();
 
       const savedRules = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
       const saveRules = (rules) => localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
       const trackKey = (track, index) => `${index}:${track.channel}:${track.instrument.number}:${track.instrument.name}`;
+      
       const getTrackVolume = (track, rules, key) => (
         rules.tracks?.[key]?.volume
         ?? track.volume
         ?? track.playback?.volume
         ?? 100
       );
+      
       const getTrackSoundfont = (track, rules, key) => {
         const trackRules = rules.tracks?.[key];
         if (trackRules && Object.prototype.hasOwnProperty.call(trackRules, "soundfont")) {
-          return trackRules.soundfont;
+          return trackRules.soundfont || DEFAULT_SOUNDFONT;
         }
-        return track.soundfont ?? track.playback?.soundfont ?? null;
+        return track.soundfont ?? track.playback?.soundfont ?? DEFAULT_SOUNDFONT;
       };
+      
       const getGlobalVolume = () => savedRules()[currentFilename]?.globalVolume ?? 100;
       const getPlaybackSpeed = () => savedRules()[currentFilename]?.playbackSpeed ?? 100;
       const getGlobalPitch = () => savedRules()[currentFilename]?.globalPitch ?? 0;
+      
       const persistVolume = (key, volume) => {
         const allRules = savedRules();
         const current = allRules[currentFilename] || {};
@@ -133,11 +163,12 @@
         soundfontSynthesizers.forEach((synth) => synth.stopAll(true));
         clearTimeout(finishTimer);
         playbackState = null;
-        activeTrackGains.clear();
         statusElement.textContent = message;
       }
 
       async function getSoundfontSynthesizer(soundfontFile) {
+        if (!audioContext) audioContext = new AudioContext();
+        
         if (!soundfontSynthesizers.has(soundfontFile)) {
           const processorUrl = "/assets/spessasynth/spessasynth_processor.min.js";
           if (!processorLoaded) {
@@ -145,16 +176,58 @@
             processorLoaded = true;
           }
           const synth = new WorkletSynthesizer(audioContext);
+          masterGain = masterGain || audioContext.createGain();
+          masterGain.connect(audioContext.destination);
+          masterGain.gain.value = getGlobalVolume() / 100;
+          
           synth.connect(masterGain);
+          
           const response = await fetch(`/assets/${encodeURIComponent(soundfontFile)}`);
           if (!response.ok) {
-            throw new Error(`SoundFont ${soundfontFile} gagal dimuat (${response.status}).`);
+            throw new Error(`SoundFont ${soundfontFile} gagal dimuat (${response.status}). Pastikan file berada di D:\\singcat\\publick\\assets\\`);
           }
           await synth.soundBankManager.addSoundBank(await response.arrayBuffer(), soundfontFile);
           await synth.isReady;
           soundfontSynthesizers.set(soundfontFile, synth);
         }
         return soundfontSynthesizers.get(soundfontFile);
+      }
+
+      // Preload Function: Mengubah MIDI ke JSON sekaligus caching semua instrumen
+      async function preloadInstruments(isConverted) {
+        const rules = savedRules()[currentFilename] || {};
+        const requiredFonts = new Set();
+        
+        songData.tracks.forEach((track, index) => {
+          const sf = getTrackSoundfont(track, rules, trackKey(track, index));
+          requiredFonts.add(sf);
+        });
+
+        let loaded = 0;
+        const total = requiredFonts.size;
+        
+        progressContainer.style.display = "block";
+        progressBar.style.width = "0%";
+        
+        for (const sf of requiredFonts) {
+          statusElement.textContent = `Memproses JSON & Memuat Instrumen: ${sf}...`;
+          try {
+            await getSoundfontSynthesizer(sf);
+          } catch (e) {
+            console.error(e);
+            statusElement.textContent = `Error memuat ${sf}`;
+          }
+          loaded++;
+          progressBar.style.width = `${(loaded / total) * 100}%`;
+        }
+
+        setTimeout(() => progressContainer.style.display = "none", 600);
+        
+        const convertedText = isConverted ? "MIDI berhasil dikonversi ke JSON." : "Data JSON dimuat.";
+        statusElement.textContent = `Global Status: READY! ${convertedText} Semua instrumen telah di-cache.`;
+        
+        playSelectedButton.disabled = false;
+        stopAllButton.disabled = false;
       }
 
       async function playTracks(trackIndexes, offset = 0, isContinuation = false, speed = getPlaybackSpeed(), pitch = getGlobalPitch()) {
@@ -169,132 +242,147 @@
           masterGain = masterGain || audioContext.createGain();
           masterGain.connect(audioContext.destination);
           masterGain.gain.value = getGlobalVolume() / 100;
-          const startTime = audioContext.currentTime + .05;
+          
           const rules = savedRules()[currentFilename] || {};
-          playbackState = {
-            trackIndexes,
-            startedAt: performance.now(),
-            offset,
-            speed,
-            pitch
-          };
+          playbackState = { trackIndexes, startedAt: performance.now(), offset, speed, pitch };
+          
           await Promise.all(trackIndexes.map(async (index) => {
-          const track = songData.tracks[index];
-          const soundfontFile = getTrackSoundfont(track, rules, trackKey(track, index));
-          const soundfontSynth = soundfontFile ? await getSoundfontSynthesizer(soundfontFile) : null;
-          const key = trackKey(track, index);
-          const trackVolume = getTrackVolume(track, rules, key);
-          if (soundfontSynth) soundfontSynth.controllerChange(track.channel, 7, Math.round(trackVolume * 1.27));
-          track.notes.forEach((note) => {
-            if (note.time + note.duration <= offset) {
-              return;
-            }
-            const relativeTime = Math.max(0, note.time - offset) / (speed / 100);
+            const track = songData.tracks[index];
+            const key = trackKey(track, index);
+            
+            // Seluruh channel menggunakan Soundfont (ChoriumRevA atau Soundfont Kucing), oscillator dihapus total
+            const soundfontFile = getTrackSoundfont(track, rules, key);
+            const soundfontSynth = await getSoundfontSynthesizer(soundfontFile);
+            const trackVolume = getTrackVolume(track, rules, key);
+            
             if (soundfontSynth) {
-              const noteStart = relativeTime * 1000;
-              const noteEnd = Math.max(noteStart + 20, ((note.time + note.duration - offset) / (speed / 100)) * 1000);
-              const startTimer = setTimeout(() => {
-                soundfontSynth.programChange(track.channel, track.instrument.number);
-                soundfontSynth.noteOn(track.channel, note.midi + pitch, Math.round(note.velocity * 127));
-              }, noteStart);
-              const endTimer = setTimeout(() => soundfontSynth.noteOff(track.channel, note.midi + pitch), noteEnd);
-              scheduledSources.push({ stop: () => { clearTimeout(startTimer); clearTimeout(endTimer); soundfontSynth.noteOff(track.channel, note.midi + pitch); } });
-              return;
+              soundfontSynth.controllerChange(track.channel, 7, Math.round(trackVolume * 1.27));
+              track.notes.forEach((note) => {
+                if (note.time + note.duration <= offset) return;
+                
+                const relativeTime = Math.max(0, note.time - offset) / (speed / 100);
+                const noteStart = relativeTime * 1000;
+                const noteEnd = Math.max(noteStart + 20, ((note.time + note.duration - offset) / (speed / 100)) * 1000);
+                
+                const startTimer = setTimeout(() => {
+                  soundfontSynth.programChange(track.channel, track.instrument.number);
+                  soundfontSynth.noteOn(track.channel, note.midi + pitch, Math.round(note.velocity * 127));
+                }, noteStart);
+                
+                const endTimer = setTimeout(() => soundfontSynth.noteOff(track.channel, note.midi + pitch), noteEnd);
+                
+                scheduledSources.push({ 
+                  stop: () => { 
+                    clearTimeout(startTimer); 
+                    clearTimeout(endTimer); 
+                    soundfontSynth.noteOff(track.channel, note.midi + pitch); 
+                  } 
+                });
+              });
             }
-          const oscillator = audioContext.createOscillator();
-          const gain = audioContext.createGain();
-          const trackGain = audioContext.createGain();
-          trackGain.gain.value = trackVolume / 100;
-          activeTrackGains.set(key, trackGain);
-          const start = startTime + relativeTime;
-          const end = Math.max(start + .02, startTime + ((note.time + note.duration - offset) / (speed / 100)));
-          oscillator.type = "triangle";
-          oscillator.frequency.value = 440 * Math.pow(2, (note.midi + pitch - 69) / 12);
-          gain.gain.setValueAtTime(.0001, start);
-          gain.gain.linearRampToValueAtTime(Math.max(note.velocity, .05) * .16, start + .01);
-          gain.gain.exponentialRampToValueAtTime(.0001, end);
-          oscillator.connect(gain).connect(trackGain).connect(masterGain);
-          oscillator.start(start);
-          oscillator.stop(end);
-          scheduledSources.push(oscillator);
-          });
           }));
-          const soundfontCount = trackIndexes.filter((index) => rules.tracks?.[trackKey(songData.tracks[index], index)]?.soundfont).length;
-          statusElement.textContent = `${isContinuation ? "Melanjutkan" : "Memainkan"} ${trackIndexes.length} channel dari ${currentFilename}${soundfontCount ? `, ${soundfontCount} dengan SF2 lokal.` : "."}`;
+          
+          statusElement.textContent = `${isContinuation ? "Melanjutkan" : "Memainkan"} ${trackIndexes.length} channel dari ${currentFilename}.`;
+          
           finishTimer = setTimeout(() => {
             scheduledSources = [];
             playbackState = null;
-            statusElement.textContent = "Playback selesai.";
+            statusElement.textContent = "Playback selesai. Global Status: Ready.";
           }, Math.max(0.2, (songData.duration - offset) / (speed / 100) + .2) * 1000);
-            return true;
-          } catch (error) {
-            stopAll("Playback gagal.");
-            console.error(error);
-            return false;
-          }
+          return true;
+        } catch (error) {
+          stopAll("Playback gagal.");
+          console.error(error);
+          return false;
+        }
       }
 
-      function renderTracks() {
+      function renderTracks(isReady = false) {
         const rules = savedRules()[currentFilename] || {};
         tracksElement.innerHTML = "";
+        
         songData.tracks.forEach((track, index) => {
           const key = trackKey(track, index);
           const row = document.createElement("div");
           row.className = "track";
           const selectedSoundfont = getTrackSoundfont(track, rules, key);
           const trackVolume = getTrackVolume(track, rules, key);
+          
+          const statusHTML = isReady 
+            ? `<span class="track-status ready">Ready</span>` 
+            : `<span class="track-status loading">Loading...</span>`;
+          
           row.innerHTML = `
             <input class="track-enabled" data-index="${index}" type="checkbox" ${rules[key] !== false ? "checked" : ""} aria-label="Mainkan channel ${index + 1}">
-            <div><span class="track-name">Channel ${track.channel + 1}: ${track.instrument.name}</span>
+            <div>
+              <span class="track-name">Channel ${track.channel + 1}: ${track.instrument.name} ${statusHTML}</span>
               <span class="track-meta">${track.name || `Track ${index + 1}`} · ${track.instrument.family} · ${track.notes.length} notes</span>
-              <span class="soundfont-label">Mark SoundFont SF2 (opsional)</span>
-              <div class="soundfont-mark"><button class="soundfont-button ${!selectedSoundfont ? "active" : ""}" data-soundfont="" type="button">Tanpa SF2</button>${SOUNDFONTS.map((soundfont) => `<button class="soundfont-button ${selectedSoundfont === soundfont.file ? "active" : ""}" data-soundfont="${soundfont.file}" type="button">${soundfont.label}</button>`).join("")}</div></div>
-              <label class="volume-control">Volume instrumen <input class="track-volume" data-key="${key}" type="range" min="0" max="200" value="${trackVolume}"><span>${trackVolume}%</span></label></div>
-            <div class="track-actions"><button class="track-play" data-index="${index}" type="button">Play</button><button class="track-stop" type="button">Stop</button></div>`;
+              <span class="soundfont-label">Pilih SoundFont SF2:</span>
+              <div class="soundfont-mark">
+                ${SOUNDFONTS.map((sf) => 
+                  `<button class="soundfont-button ${selectedSoundfont === sf.file ? "active" : ""}" data-soundfont="${sf.file}" type="button">${sf.label}</button>`
+                ).join("")}
+              </div>
+            </div>
+            <label class="volume-control">Volume instrumen <input class="track-volume" data-key="${key}" type="range" min="0" max="200" value="${trackVolume}"><span>${trackVolume}%</span></label>
+            <div class="track-actions">
+              <button class="track-play" data-index="${index}" type="button" ${!isReady ? "disabled" : ""}>Play</button>
+              <button class="track-stop" type="button" ${!isReady ? "disabled" : ""}>Stop</button>
+            </div>`;
+            
           row.querySelector(".track-enabled").addEventListener("change", (event) => {
             const allRules = savedRules();
             allRules[currentFilename] = { ...(allRules[currentFilename] || {}), [key]: event.target.checked, tracks: allRules[currentFilename]?.tracks || {} };
             saveRules(allRules);
           });
+          
           row.querySelector(".track-volume").addEventListener("input", (event) => {
             const volume = Number(event.target.value);
             event.target.nextElementSibling.textContent = `${volume}%`;
             persistVolume(key, volume);
-            const gain = activeTrackGains.get(key);
-            if (gain) gain.gain.setTargetAtTime(volume / 100, audioContext.currentTime, .015);
             const selected = getTrackSoundfont(track, savedRules()[currentFilename] || {}, key);
             const trackSynth = selected ? soundfontSynthesizers.get(selected) : null;
             if (trackSynth) trackSynth.controllerChange(track.channel, 7, Math.round(Math.min(volume, 100) * 1.27));
           });
-          row.querySelectorAll(".soundfont-button").forEach((button) => button.addEventListener("click", () => {
+          
+          row.querySelectorAll(".soundfont-button").forEach((button) => button.addEventListener("click", async () => {
             const wasPlaying = playbackState && playbackState.trackIndexes.length > 0;
             const resumeOffset = wasPlaying
               ? Math.min(songData.duration, playbackState.offset + ((performance.now() - playbackState.startedAt) / 1000) * (playbackState.speed / 100))
               : 0;
+              
             const allRules = savedRules();
             const file = button.dataset.soundfont;
             const current = allRules[currentFilename] || {};
             const tracks = { ...(current.tracks || {}) };
-            tracks[key] = { ...(tracks[key] || {}), soundfont: tracks[key]?.soundfont === file ? null : file };
+            
+            // Toggle logic: jika diklik ulang pada yang sama, fallback ke Chorium
+            tracks[key] = { ...(tracks[key] || {}), soundfont: tracks[key]?.soundfont === file ? DEFAULT_SOUNDFONT : file };
             allRules[currentFilename] = { ...current, tracks };
             saveRules(allRules);
-            track.playback = tracks[key].soundfont
-              ? { engine: "spessasynth", soundfont: tracks[key].soundfont }
-              : { engine: "oscillator", soundfont: null };
-            renderTracks();
+            
+            track.playback = { engine: "spessasynth", soundfont: tracks[key].soundfont };
+            
+            // Re-render and cache newly selected soundfont if not cached
+            renderTracks(false);
+            await preloadInstruments(false);
+            renderTracks(true);
+            
             if (wasPlaying && resumeOffset < songData.duration) {
               playTracks(playbackState.trackIndexes, resumeOffset, true, playbackState.speed, getGlobalPitch());
             }
           }));
+          
           row.querySelector(".track-play").addEventListener("click", () => playTracks([index]));
           row.querySelector(".track-stop").addEventListener("click", () => stopAll(`Channel ${track.channel + 1} dihentikan.`));
           tracksElement.appendChild(row);
         });
       }
 
-      function loadSongData(data, filename, converted = false) {
+      async function loadSongData(data, filename, converted = false) {
         songData = data;
         currentFilename = filename;
+        
         const globalVolume = getGlobalVolume();
         document.getElementById("global-volume").value = globalVolume;
         document.getElementById("global-volume-value").textContent = `${globalVolume}%`;
@@ -304,13 +392,19 @@
         const globalPitch = getGlobalPitch();
         document.getElementById("global-pitch").value = globalPitch;
         document.getElementById("global-pitch-value").textContent = `${globalPitch > 0 ? "+" : ""}${globalPitch} semitone`;
+        
         songNameElement.textContent = `${filename} · ${songData.tracks.length} channel`;
-        playSelectedButton.disabled = false;
-        stopAllButton.disabled = false;
-        renderTracks();
-        statusElement.textContent = converted
-          ? "MIDI dikonversi ke JSON di browser. Aturan sebelumnya dipulihkan."
-          : "Data MIDI JSON dimuat. Jatuhkan file lain untuk menggantinya.";
+        
+        // Render dengan state Loading (disabled play)
+        playSelectedButton.disabled = true;
+        stopAllButton.disabled = true;
+        renderTracks(false); 
+        
+        // Preload seluruh instrument secara async dengan Progress Bar
+        await preloadInstruments(converted);
+        
+        // Setelah preload selesai, aktifkan semua dan berikan status Ready
+        renderTracks(true);
       }
 
       function loadMidi(buffer, filename) {
@@ -323,7 +417,7 @@
               channel: track.channel,
               instrument: track.instrument,
               notes: track.notes.map((note) => ({ midi: note.midi, time: note.time, duration: note.duration, velocity: note.velocity })),
-              playback: { engine: "oscillator" }
+              playback: { engine: "spessasynth", soundfont: DEFAULT_SOUNDFONT } // Set default untuk JSON output
             }))
           }, filename, true);
         } catch (error) {
@@ -347,11 +441,13 @@
       dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragging"));
       dropZone.addEventListener("drop", (event) => { event.preventDefault(); dropZone.classList.remove("dragging"); readFile(event.dataTransfer.files[0]); });
       fileInput.addEventListener("change", () => readFile(fileInput.files[0]));
+      
       playSelectedButton.addEventListener("click", () => {
         const selected = [...document.querySelectorAll(".track-enabled:checked")].map((input) => Number(input.dataset.index));
         playTracks(selected);
       });
       stopAllButton.addEventListener("click", () => stopAll());
+      
       const globalVolume = document.getElementById("global-volume");
       const globalVolumeValue = document.getElementById("global-volume-value");
       globalVolume.addEventListener("input", () => {
@@ -362,55 +458,44 @@
         saveRules(allRules);
         if (masterGain && audioContext) masterGain.gain.setTargetAtTime(volume / 100, audioContext.currentTime, .015);
       });
+      
       const playbackSpeed = document.getElementById("playback-speed");
       const playbackSpeedValue = document.getElementById("playback-speed-value");
       const resetSpeed = document.getElementById("reset-speed");
-      function savePlaybackSpeed(speed) {
-        const allRules = savedRules();
-        allRules[currentFilename] = { ...(allRules[currentFilename] || {}), playbackSpeed: speed };
-        saveRules(allRules);
-      }
+      
       function changePlaybackSpeed(speed) {
         playbackSpeed.value = speed;
         playbackSpeedValue.textContent = `${speed}%`;
-        savePlaybackSpeed(speed);
+        const allRules = savedRules();
+        allRules[currentFilename] = { ...(allRules[currentFilename] || {}), playbackSpeed: speed };
+        saveRules(allRules);
         if (playbackState && playbackState.trackIndexes.length > 0) {
-          const resumeOffset = Math.min(
-            songData.duration,
-            playbackState.offset + ((performance.now() - playbackState.startedAt) / 1000) * (playbackState.speed / 100)
-          );
-          if (resumeOffset < songData.duration) {
-            playTracks(playbackState.trackIndexes, resumeOffset, true, speed);
-          }
+          const resumeOffset = Math.min(songData.duration, playbackState.offset + ((performance.now() - playbackState.startedAt) / 1000) * (playbackState.speed / 100));
+          if (resumeOffset < songData.duration) playTracks(playbackState.trackIndexes, resumeOffset, true, speed);
         }
       }
       playbackSpeed.addEventListener("input", () => changePlaybackSpeed(Number(playbackSpeed.value)));
       resetSpeed.addEventListener("click", () => changePlaybackSpeed(100));
+      
       const globalPitch = document.getElementById("global-pitch");
       const globalPitchValue = document.getElementById("global-pitch-value");
       const resetPitch = document.getElementById("reset-pitch");
       const saveJsonButton = document.getElementById("save-json");
-      function saveGlobalPitch(pitch) {
-        const allRules = savedRules();
-        allRules[currentFilename] = { ...(allRules[currentFilename] || {}), globalPitch: pitch };
-        saveRules(allRules);
-      }
+      
       function changeGlobalPitch(pitch) {
         globalPitch.value = pitch;
         globalPitchValue.textContent = `${pitch > 0 ? "+" : ""}${pitch} semitone`;
-        saveGlobalPitch(pitch);
+        const allRules = savedRules();
+        allRules[currentFilename] = { ...(allRules[currentFilename] || {}), globalPitch: pitch };
+        saveRules(allRules);
         if (playbackState && playbackState.trackIndexes.length > 0) {
-          const resumeOffset = Math.min(
-            songData.duration,
-            playbackState.offset + ((performance.now() - playbackState.startedAt) / 1000) * (playbackState.speed / 100)
-          );
-          if (resumeOffset < songData.duration) {
-            playTracks(playbackState.trackIndexes, resumeOffset, true, playbackState.speed, pitch);
-          }
+          const resumeOffset = Math.min(songData.duration, playbackState.offset + ((performance.now() - playbackState.startedAt) / 1000) * (playbackState.speed / 100));
+          if (resumeOffset < songData.duration) playTracks(playbackState.trackIndexes, resumeOffset, true, playbackState.speed, pitch);
         }
       }
       globalPitch.addEventListener("input", () => changeGlobalPitch(Number(globalPitch.value)));
       resetPitch.addEventListener("click", () => changeGlobalPitch(0));
+
       function buildAnimationConfig() {
         const rules = savedRules()[currentFilename] || {};
         return {
@@ -426,6 +511,7 @@
           tracks: songData.tracks.map((track, index) => {
             const key = trackKey(track, index);
             const trackRules = rules.tracks?.[key] || {};
+            const sf = getTrackSoundfont(track, rules, key);
             return {
               index,
               channel: track.channel,
@@ -437,10 +523,8 @@
               },
               enabled: rules[key] !== false,
               volume: trackRules.volume ?? 100,
-              soundfont: getTrackSoundfont(track, rules, key),
-              playback: getTrackSoundfont(track, rules, key)
-                ? { engine: "spessasynth", soundfont: getTrackSoundfont(track, rules, key) }
-                : { engine: "oscillator", soundfont: null },
+              soundfont: sf,
+              playback: { engine: "spessasynth", soundfont: sf },
               notes: track.notes
             };
           })
@@ -457,18 +541,8 @@
           .map(({ index }) => index);
       }
 
-      function hasSelectedSoundfont() {
-        const rules = savedRules()[currentFilename] || {};
-        return songData.tracks.some((track, index) => (
-          rules[trackKey(track, index)] !== false
-          && getTrackSoundfont(track, rules, trackKey(track, index))
-        ));
-      }
-
       async function recordBrowserAudio() {
-        if (!window.MediaRecorder) {
-          throw new Error("Browser tidak mendukung perekaman audio.");
-        }
+        if (!window.MediaRecorder) throw new Error("Browser tidak mendukung perekaman audio.");
         audioContext = audioContext || new AudioContext();
         await audioContext.resume();
         masterGain = masterGain || audioContext.createGain();
@@ -476,16 +550,20 @@
         recordingDestination = recordingDestination || audioContext.createMediaStreamDestination();
         masterGain.connect(recordingDestination);
 
-        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-          ? "audio/webm;codecs=opus"
-          : "audio/webm";
-        const recorder = new MediaRecorder(recordingDestination.stream, { mimeType });
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+        
+        // Setting audio untuk output resolusi HD (320kbps)
+        const recorder = new MediaRecorder(recordingDestination.stream, { 
+          mimeType,
+          audioBitsPerSecond: 320000 
+        });
+        
         const chunks = [];
         recorder.ondataavailable = (event) => {
           if (event.data.size > 0) chunks.push(event.data);
         };
         const stopped = new Promise((resolve, reject) => {
-          recorder.onerror = () => reject(new Error("Perekaman audio SoundFont gagal."));
+          recorder.onerror = () => reject(new Error("Perekaman audio gagal."));
           recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
         });
 
@@ -495,12 +573,12 @@
         if (!started) {
           recorder.stop();
           await stopped;
-          throw new Error("SoundFont tidak berhasil dimainkan untuk direkam.");
+          throw new Error("Musik tidak berhasil dimainkan untuk direkam.");
         }
         await new Promise((resolve) => setTimeout(resolve, (songData.duration / speed + 1.25) * 1000));
         recorder.stop();
         const blob = await stopped;
-        stopAll("Audio SoundFont selesai direkam.");
+        stopAll("Audio selesai direkam dalam kualitas HD.");
         return blob;
       }
 
@@ -511,7 +589,7 @@
           body: blob
         });
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error || "Audio SoundFont gagal disimpan.");
+        if (!response.ok) throw new Error(result.error || "Audio gagal disimpan.");
         return result.audio;
       }
 
@@ -529,16 +607,13 @@
           });
           const result = await response.json();
           if (!response.ok) throw new Error(result.error || "Gagal menyimpan JSON");
-          if (hasSelectedSoundfont()) {
-            statusElement.textContent = "Merekam audio dengan SoundFont yang dipilih...";
-            const recordedAudio = await recordBrowserAudio();
-            const audio = await uploadBrowserAudio(recordedAudio);
-            statusElement.textContent = `JSON dan audio SoundFont tersimpan sebagai publick/assets/${result.file}.`;
-            return audio;
-          }
-          statusElement.textContent = `JSON animasi tersimpan sebagai publick/assets/${result.file}.`;
+          
+          statusElement.textContent = "Merekam audio (Kualitas HD)...";
+          const recordedAudio = await recordBrowserAudio();
+          const audio = await uploadBrowserAudio(recordedAudio);
+          statusElement.textContent = `Berhasil! JSON dan Audio HD tersimpan di publick/assets/${result.file}.`;
         } catch (error) {
-          statusElement.textContent = "JSON animasi gagal disimpan.";
+          statusElement.textContent = "Proses penyimpanan gagal.";
           console.error(error);
         } finally {
           saveJsonButton.disabled = false;
@@ -549,6 +624,7 @@
       socket.on("connect", () => document.getElementById("server-status").textContent = "online");
       socket.on("disconnect", () => document.getElementById("server-status").textContent = "offline");
 
+      // Optional fallback startup
       fetch("/assets/Pinkfong-Babyshark.json")
         .then((response) => response.ok ? response.json() : Promise.reject(new Error("Bundled MIDI JSON unavailable")))
         .then((data) => {
