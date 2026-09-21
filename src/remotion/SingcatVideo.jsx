@@ -9,7 +9,7 @@ import {
   staticFile,
   useCurrentFrame,
   useVideoConfig,
-  random // 1. Ditambahkan fungsi random bawaan remotion
+  random,
 } from "remotion";
 
 const characterFrameCount = 80;
@@ -31,11 +31,14 @@ const buildCharacterIntervals = (notes) => {
   for (const note of notes) {
     const start = Number(note.time);
     const end = start + Math.max(0, Number(note.duration));
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start)
+      continue;
     events.push({ time: start, delta: 1 });
     events.push({ time: end, delta: -1 });
   }
-  events.sort((left, right) => left.time - right.time || right.delta - left.delta);
+  events.sort(
+    (left, right) => left.time - right.time || right.delta - left.delta,
+  );
 
   const intervals = [];
   let activeNotes = 0;
@@ -73,15 +76,18 @@ const buildPitchCharacters = (tracks) => {
       intervals: buildCharacterIntervals(notes).map((interval) => ({
         ...interval,
         startFrame: interval.start * characterFps,
-        endFrame: interval.end * characterFps
-      }))
+        endFrame: interval.end * characterFps,
+      })),
     }));
 };
 
 const getCharacterFrame = (intervals, sourceTime, characterFps) => {
   const sourceFrame = sourceTime * characterFps;
   const getActiveFrame = (interval) => {
-    const duration = Math.max(1 / characterFps, interval.endFrame - interval.startFrame);
+    const duration = Math.max(
+      1 / characterFps,
+      interval.endFrame - interval.startFrame,
+    );
     const elapsed = clamp(sourceFrame - interval.startFrame, 0, duration);
     const firstPhaseDuration = Math.min(characterPhaseOneDuration, duration);
     const secondPhaseDuration = duration - firstPhaseDuration;
@@ -102,12 +108,16 @@ const getCharacterFrame = (intervals, sourceTime, characterFps) => {
       return characterTriggerFrame;
     }
 
-    const loopPosition = (secondPhaseElapsed - normalFrameCount) % characterLoopLength;
+    const loopPosition =
+      (secondPhaseElapsed - normalFrameCount) % characterLoopLength;
     const halfLoopLength = characterLoopLength / 2;
     return loopPosition < halfLoopLength
-      ? characterLoopStart + (characterLoopEnd - characterLoopStart) * (loopPosition / halfLoopLength)
-      : characterLoopEnd - (characterLoopEnd - characterLoopStart)
-        * ((loopPosition - halfLoopLength) / halfLoopLength);
+      ? characterLoopStart +
+          (characterLoopEnd - characterLoopStart) *
+            (loopPosition / halfLoopLength)
+      : characterLoopEnd -
+          (characterLoopEnd - characterLoopStart) *
+            ((loopPosition - halfLoopLength) / halfLoopLength);
   };
   for (let index = 0; index < intervals.length; index += 1) {
     const interval = intervals[index];
@@ -119,22 +129,18 @@ const getCharacterFrame = (intervals, sourceTime, characterFps) => {
       const previous = intervals[index - 1];
       if (!previous) return 1;
       const reverseElapsed = sourceFrame - previous.endFrame;
-      return Math.round(clamp(
-        characterTriggerFrame - reverseElapsed,
-        1,
-        characterFrameCount
-      ));
+      return Math.round(
+        clamp(characterTriggerFrame - reverseElapsed, 1, characterFrameCount),
+      );
     }
   }
 
   const lastInterval = intervals[intervals.length - 1];
   if (!lastInterval) return 1;
   const reverseElapsed = sourceFrame - lastInterval.endFrame;
-  return Math.round(clamp(
-    characterTriggerFrame - reverseElapsed,
-    1,
-    characterFrameCount
-  ));
+  return Math.round(
+    clamp(characterTriggerFrame - reverseElapsed, 1, characterFrameCount),
+  );
 };
 
 const cheerfulColors = [
@@ -145,14 +151,17 @@ const cheerfulColors = [
   [0.2, 0.75, 1],
   [0.35, 0.45, 1],
   [0.75, 0.35, 1],
-  [1, 0.35, 0.75]
+  [1, 0.35, 0.75],
 ];
 
 const characterColorIndex = (index) => {
   const randomValue = Math.sin((index + 1) * 91.173 + 17.531) * 43758.5453;
-  return Math.floor((randomValue - Math.floor(randomValue)) * cheerfulColors.length);
+  return Math.floor(
+    (randomValue - Math.floor(randomValue)) * cheerfulColors.length,
+  );
 };
-const characterFilterId = (index) => `character-color-${characterColorIndex(index)}`;
+const characterFilterId = (index) =>
+  `character-color-${characterColorIndex(index)}`;
 
 const brightBackgrounds = [
   ["#ffffff", "#e0f2fe", "#bae6fd"],
@@ -160,19 +169,18 @@ const brightBackgrounds = [
   ["#fefce8", "#fef08a", "#fde047"],
   ["#f0fdf4", "#bbf7d0", "#86efac"],
   ["#fdf4ff", "#f5d0fe", "#e9d5ff"],
-  ["#fff1f2", "#fecdd3", "#fda4af"]
+  ["#fff1f2", "#fecdd3", "#fda4af"],
 ];
 
 const backgroundIndexFor = (song) => {
   const source = String(song?.source || "singcat-midi");
   const hash = [...source].reduce(
     (value, character) => (value * 31 + character.charCodeAt(0)) >>> 0,
-    7
+    7,
   );
   return hash % brightBackgrounds.length;
 };
 
-// Sub-komponen animasi Angka Hitung Mundur
 const CountdownNumber = ({ number }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -180,12 +188,12 @@ const CountdownNumber = ({ number }) => {
   const scale = spring({
     frame,
     fps,
-    config: { damping: 12, mass: 0.5 }
+    config: { damping: 12, mass: 0.5 },
   });
 
   const opacity = interpolate(frame, [0, 5, 22, 30], [0, 1, 1, 0], {
     extrapolateLeft: "clamp",
-    extrapolateRight: "clamp"
+    extrapolateRight: "clamp",
   });
 
   return (
@@ -196,10 +204,11 @@ const CountdownNumber = ({ number }) => {
           fontSize: "280px",
           fontWeight: "900",
           color: "#ffffff",
-          textShadow: "0 10px 30px rgba(0,0,0,0.3), 0 0 50px rgba(255,255,255,0.8)",
+          textShadow:
+            "0 10px 30px rgba(0,0,0,0.3), 0 0 50px rgba(255,255,255,0.8)",
           fontFamily: "sans-serif",
           transform: `scale(${scale})`,
-          opacity
+          opacity,
         }}
       >
         {number}
@@ -212,31 +221,95 @@ export const SingcatVideo = ({ song, title }) => {
   const globalFrame = useCurrentFrame();
   const { fps, height, width } = useVideoConfig();
 
+  const INTRO_FRAMES = 180; // Intro 6 Detik (3s Judul + 3s Hitung Mundur)
+
   const backgroundIndex = backgroundIndexFor(song);
-  const playbackSpeed = Math.max(0.01, (song.global?.speed ?? song.playbackSpeed ?? 100) / 100);
-  const audioVolume = Math.max(0, Math.min(1, (song.global?.volume ?? song.globalVolume ?? 100) / 100));
-  const audioSource = song.audio?.selected
-    || song.audio?.wav
-    || song.audio?.mp3
-    || "assets/generated/singcat-remotion.wav";
+  const playbackSpeed = Math.max(
+    0.01,
+    (song.global?.speed ?? song.playbackSpeed ?? 100) / 100,
+  );
+  const audioVolume = Math.max(
+    0,
+    Math.min(1, (song.global?.volume ?? song.globalVolume ?? 100) / 100),
+  );
+  const audioSource =
+    song.audio?.selected ||
+    song.audio?.wav ||
+    song.audio?.mp3 ||
+    "assets/generated/singcat-remotion.wav";
 
   const displayTitle = title || song?.name || song?.title || "Singcat Video";
 
+  const songFrames = Math.max(
+    1,
+    Math.ceil(((song.duration || 1) / playbackSpeed) * fps),
+  );
+  const applauseStartFrame = INTRO_FRAMES + songFrames;
+
   const visibleTracks = useMemo(
     () => (song.tracks || []).filter((track) => track.enabled !== false),
-    [song.tracks]
+    [song.tracks],
+  );
+
+  // --- MENCARI BAGIAN REFF (NOT PALING RAPAT) UNTUK AUDIO PREVIEW ---
+  const previewDurationInSeconds = 6;
+  const previewStartTime = useMemo(() => {
+    let allNotes = [];
+    visibleTracks.forEach((track) => {
+      if (track.notes) {
+        allNotes.push(...track.notes);
+      }
+    });
+
+    if (allNotes.length === 0) return 0;
+
+    allNotes.sort((a, b) => Number(a.time) - Number(b.time));
+    const songEnd = Number(allNotes[allNotes.length - 1].time) || 0;
+
+    let maxDensity = 0;
+    let bestStartTime = 0;
+
+    for (
+      let t = 0;
+      t <= Math.max(0, songEnd - previewDurationInSeconds);
+      t += 1
+    ) {
+      let density = 0;
+      for (const note of allNotes) {
+        const noteTime = Number(note.time);
+        if (noteTime >= t && noteTime < t + previewDurationInSeconds) {
+          density++;
+        }
+        if (noteTime >= t + previewDurationInSeconds) break;
+      }
+      if (density > maxDensity) {
+        maxDensity = density;
+        bestStartTime = t;
+      }
+    }
+
+    return bestStartTime;
+  }, [visibleTracks]);
+
+  const previewVolume = interpolate(
+    globalFrame,
+    [0, 30, 75, 90],
+    [0, audioVolume, audioVolume, 0],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   );
 
   const pitchCharacters = useMemo(
     () => buildPitchCharacters(visibleTracks),
-    [visibleTracks]
+    [visibleTracks],
   );
 
   const formation = useMemo(() => {
     const rowCount = Math.min(5, Math.max(1, pitchCharacters.length));
     const maximumPerRow = Math.max(
       1,
-      Math.ceil((pitchCharacters.length + Math.floor((rowCount - 1) / 2)) / rowCount)
+      Math.ceil(
+        (pitchCharacters.length + Math.floor((rowCount - 1) / 2)) / rowCount,
+      ),
     );
 
     const layoutRowsShape = [];
@@ -246,11 +319,13 @@ export const SingcatVideo = ({ song, title }) => {
       rowIndex < rowCount && allocatedSlots < pitchCharacters.length;
       rowIndex += 1
     ) {
-      const rowCapacity = rowIndex % 2 === 0
-        ? maximumPerRow
-        : Math.max(1, maximumPerRow - 1);
+      const rowCapacity =
+        rowIndex % 2 === 0 ? maximumPerRow : Math.max(1, maximumPerRow - 1);
       const row = [];
-      while (row.length < rowCapacity && allocatedSlots < pitchCharacters.length) {
+      while (
+        row.length < rowCapacity &&
+        allocatedSlots < pitchCharacters.length
+      ) {
         row.push(null);
         allocatedSlots += 1;
       }
@@ -268,7 +343,7 @@ export const SingcatVideo = ({ song, title }) => {
 
     slots.sort((a, b) => a.xPos - b.xPos || a.rowIndex - b.rowIndex);
 
-    const layoutRows = layoutRowsShape.map(row => [...row]);
+    const layoutRows = layoutRowsShape.map((row) => [...row]);
     slots.forEach((slot, index) => {
       const characterIndex = pitchCharacters.length - 1 - index;
       layoutRows[slot.rowIndex][slot.colIndex] = characterIndex;
@@ -285,10 +360,11 @@ export const SingcatVideo = ({ song, title }) => {
   const shadowExtraHeight = 0.08;
 
   const widthMultiplier = widestRow * characterAspectRatio;
-  const heightMultiplier = 1 + (rowCount - 1) * rowVerticalStep + shadowExtraHeight;
+  const heightMultiplier =
+    1 + (rowCount - 1) * rowVerticalStep + shadowExtraHeight;
 
-  const maxFormationWidth = width * 0.90;
-  const maxFormationHeight = height * 0.80;
+  const maxFormationWidth = width * 0.9;
+  const maxFormationHeight = height * 0.8;
 
   const maxH_by_width = maxFormationWidth / Math.max(0.001, widthMultiplier);
   const maxH_by_height = maxFormationHeight / Math.max(0.001, heightMultiplier);
@@ -299,43 +375,38 @@ export const SingcatVideo = ({ song, title }) => {
   const formationWidth = widestRow * characterCellWidth;
   const formationHeight = characterImageHeight * heightMultiplier;
 
-  // --- EFEK BLUR & BRIGHTNESS KARAKTER SAAT INTRO ---
-  const bgBlur = interpolate(globalFrame, [120, 150], [25, 0], {
+  const bgBlur = interpolate(globalFrame, [150, 180], [25, 0], {
     extrapolateLeft: "clamp",
-    extrapolateRight: "clamp"
+    extrapolateRight: "clamp",
   });
-  const bgBrightness = interpolate(globalFrame, [120, 150], [0.65, 1], {
+  const bgBrightness = interpolate(globalFrame, [150, 180], [0.65, 1], {
     extrapolateLeft: "clamp",
-    extrapolateRight: "clamp"
-  });
-
-  // --- ANIMASI TEKS JUDUL LAGU ---
-  const titleOpacity = interpolate(globalFrame, [0, 15, 45, 60], [0, 1, 1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp"
-  });
-  const titleScale = interpolate(globalFrame, [0, 60], [0.95, 1.05], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp"
+    extrapolateRight: "clamp",
   });
 
-  // 2. PENENTUAN WARNA RANDOM YANG DISUKAI ANAK (MENGGUNAKAN SEED AGAR TIDAK BERKEDIP)
+  const titleOpacity = interpolate(globalFrame, [0, 15, 75, 90], [0, 1, 1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const titleScale = interpolate(globalFrame, [0, 90], [0.95, 1.05], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
   const titleColor = useMemo(() => {
     const kidColors = [
-      "#FF3366", // Hot Pink
-      "#00C3FF", // Cyan ceria
-      "#FFD700", // Emas / Kuning Terang
-      "#39FF14", // Hijau Neon
-      "#FF6600", // Oranye
-      "#9D00FF"  // Ungu Terang
+      "#FF3366",
+      "#00C3FF",
+      "#FFD700",
+      "#39FF14",
+      "#FF6600",
+      "#9D00FF",
     ];
-    // random() bawaan Remotion mengembalikan nilai konsisten dari string seed
     const randIndex = Math.floor(random(displayTitle) * kidColors.length);
     return kidColors[randIndex];
   }, [displayTitle]);
 
-  // Kalkulasi Frame khusus untuk Animasi Karakter setelah Intro (150 Frame / 5 Detik)
-  const performanceFrame = Math.max(0, globalFrame - 150);
+  const performanceFrame = Math.max(0, globalFrame - INTRO_FRAMES);
   const elapsed = performanceFrame / fps;
   const sourceTime = elapsed * playbackSpeed;
   const characterSourceTime = sourceTime + characterLeadFrames / characterFps;
@@ -345,10 +416,9 @@ export const SingcatVideo = ({ song, title }) => {
       style={{
         alignItems: "center",
         background: `radial-gradient(circle at 50% 24%, ${brightBackgrounds[backgroundIndex][0]} 0%, ${brightBackgrounds[backgroundIndex][1]} 52%, ${brightBackgrounds[backgroundIndex][2]} 100%)`,
-        overflow: "hidden"
+        overflow: "hidden",
       }}
     >
-      {/* 3. INJEKSI GOOGLE FONT ("Luckiest Guy") */}
       <style>
         {`@import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');`}
       </style>
@@ -364,10 +434,26 @@ export const SingcatVideo = ({ song, title }) => {
               <feColorMatrix
                 type="matrix"
                 values={[
-                  0.2126 * red, 0.7152 * red, 0.0722 * red, 0, 0,
-                  0.2126 * green, 0.7152 * green, 0.0722 * green, 0, 0,
-                  0.2126 * blue, 0.7152 * blue, 0.0722 * blue, 0, 0,
-                  0, 0, 0, 1, 0
+                  0.2126 * red,
+                  0.7152 * red,
+                  0.0722 * red,
+                  0,
+                  0,
+                  0.2126 * green,
+                  0.7152 * green,
+                  0.0722 * green,
+                  0,
+                  0,
+                  0.2126 * blue,
+                  0.7152 * blue,
+                  0.0722 * blue,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
                 ].join(" ")}
                 result="coloredCharacter"
               />
@@ -410,7 +496,7 @@ export const SingcatVideo = ({ song, title }) => {
         </defs>
       </svg>
 
-      {/* --- PANGGUNG UTAMA KARAKTER (DENGAN BLUR INTRO) --- */}
+      {/* --- PANGGUNG UTAMA KARAKTER --- */}
       <div
         style={{
           position: "absolute",
@@ -433,7 +519,7 @@ export const SingcatVideo = ({ song, title }) => {
               display: "flex",
               justifyContent: "center",
               gap: 0,
-              zIndex: rowCount - rowIndex
+              zIndex: rowCount - rowIndex,
             }}
           >
             {row.map((characterIndex) => {
@@ -441,7 +527,7 @@ export const SingcatVideo = ({ song, title }) => {
               const characterFrame = getCharacterFrame(
                 intervals,
                 characterSourceTime,
-                characterFps
+                characterFps,
               );
               const shadowProgress = clamp((characterFrame - 1) / 49, 0, 1);
               const shadowScale = 1 - shadowProgress * 0.45;
@@ -468,12 +554,14 @@ export const SingcatVideo = ({ song, title }) => {
                       opacity: 0.75,
                       transform: `scale(${shadowScale})`,
                       transformOrigin: "center center",
-                      zIndex: 0
+                      zIndex: 0,
                     }}
                   />
 
                   <Img
-                    src={staticFile(`assets/char/char1/char${padFrame(characterFrame)}.png`)}
+                    src={staticFile(
+                      `assets/char/char1/char${padFrame(characterFrame)}.png`,
+                    )}
                     style={{
                       position: "absolute",
                       bottom: 0,
@@ -482,7 +570,7 @@ export const SingcatVideo = ({ song, title }) => {
                       filter: `url(#${characterFilterId(characterIndex)})`,
                       objectFit: "contain",
                       scale: "1.05",
-                      zIndex: 1
+                      zIndex: 1,
                     }}
                   />
                 </div>
@@ -492,14 +580,15 @@ export const SingcatVideo = ({ song, title }) => {
         ))}
       </div>
 
-      {/* --- OVERLAY JUDUL DITENGAH LAYAR (0s - 2s) --- */}
-      {/* 4. MODIFIKASI JUDUL: Font Google, Warna Random Konsisten, Responsif (vw), Garis Tepi Putih & Shadow Dalam */}
-      <Sequence from={0} durationInFrames={60}>
-        <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
+      {/* --- OVERLAY JUDUL (0s - 3s / Frame 0 - 90) --- */}
+      <Sequence from={0} durationInFrames={90}>
+        <AbsoluteFill
+          style={{ justifyContent: "center", alignItems: "center" }}
+        >
           <div
             style={{
               fontFamily: "'Luckiest Guy', cursive",
-              fontSize: "12vw", // Ukuran besar tapi responsif menyesuaikan viewport
+              fontSize: "12vw",
               lineHeight: "1.1",
               color: titleColor,
               textAlign: "center",
@@ -507,14 +596,14 @@ export const SingcatVideo = ({ song, title }) => {
               width: "100%",
               opacity: titleOpacity,
               transform: `scale(${titleScale})`,
-              WebkitTextStroke: "50px #FFFFFF", // Stroke (Garis Tepi) tebal putih
-              paintOrder: "stroke fill", // Menjadikan garis tepi merender di belakang teks (didukung mayoritas browser)
+              WebkitTextStroke: "50px #FFFFFF",
+              paintOrder: "stroke fill",
               textShadow: `
                 0 15px 25px rgba(0, 0, 0, 0.21),
                 0 30px 60px rgba(0, 0, 0, 0.11)
-              `, // Shadow tebal & profesional ala kartun 3D
+              `,
               letterSpacing: "0.4vw",
-              wordWrap: "break-word"
+              wordWrap: "break-word",
             }}
           >
             {displayTitle}
@@ -522,22 +611,34 @@ export const SingcatVideo = ({ song, title }) => {
         </AbsoluteFill>
       </Sequence>
 
-      {/* --- OVERLAY HITUNG MUNDUR (2s - 5s) --- */}
-      <Sequence from={60} durationInFrames={30}>
+      {/* --- OVERLAY HITUNG MUNDUR (3s - 6s / Frame 90 - 180) --- */}
+      <Sequence from={90} durationInFrames={30}>
         <CountdownNumber number="3" />
       </Sequence>
 
-      <Sequence from={90} durationInFrames={30}>
+      <Sequence from={120} durationInFrames={30}>
         <CountdownNumber number="2" />
       </Sequence>
 
-      <Sequence from={120} durationInFrames={30}>
+      <Sequence from={150} durationInFrames={30}>
         <CountdownNumber number="1" />
       </Sequence>
 
-      {/* --- AUDIO UTAMA LAGU (Mulai dari detik ke-5 / Frame 150) --- */}
-      <Sequence from={150}>
+      {/* --- AUDIO PREVIEW (REFF) SAAT INTRO --- */}
+      <Sequence from={0} durationInFrames={90}>
+        <Sequence from={-Math.round(previewStartTime * fps)}>
+          <Audio src={staticFile(audioSource)} volume={previewVolume} />
+        </Sequence>
+      </Sequence>
+
+      {/* --- AUDIO LAGU UTAMA --- */}
+      <Sequence from={INTRO_FRAMES} durationInFrames={songFrames}>
         <Audio src={staticFile(audioSource)} volume={audioVolume} />
+      </Sequence>
+
+      {/* --- AUDIO TEPUK TANGAN DI AKHIR (4 Detik) --- */}
+      <Sequence from={applauseStartFrame} durationInFrames={120}>
+        <Audio src={staticFile("assets/aplaouse.mp3")} />
       </Sequence>
     </AbsoluteFill>
   );
