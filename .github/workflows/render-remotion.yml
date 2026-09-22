@@ -20,7 +20,8 @@ permissions:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # PERUBAHAN 1: Naikkan timeout karena render 1 per 1 frame butuh waktu lebih lama (dari 30 menit ke 120 menit)
+    timeout-minutes: 120 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -50,12 +51,16 @@ jobs:
         env:
           COMPOSITION: ${{ inputs.composition }}
           OUTPUT_NAME: ${{ inputs.output_name }}
+          # PERUBAHAN 2: Berikan limit memori Node.js maksimal ke 6GB (Runner GitHub punya total RAM ~7GB)
+          NODE_OPTIONS: "--max-old-space-size=6144" 
         run: |
           mkdir -p out
+          # PERUBAHAN 3: Ubah concurrency menjadi 1. 
+          # Catatan: '--public-dir publick' dibiarkan sama. (Pastikan ini bukan typo dari 'public').
           npx remotion render src/remotion/index.jsx "$COMPOSITION" "out/$OUTPUT_NAME" \
             --public-dir publick \
             --codec=h264 \
-            --concurrency=2
+            --concurrency=1
 
       - name: Upload rendered video
         uses: actions/upload-artifact@v4
