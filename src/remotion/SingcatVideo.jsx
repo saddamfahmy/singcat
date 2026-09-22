@@ -58,10 +58,20 @@ const buildCharacterIntervals = (notes) => {
   return intervals;
 };
 
+// --- MODIFIKASI DIMULAI DI SINI ---
 const buildPitchCharacters = (tracks) => {
   const notesByPitch = new Map();
+  const allowedSoundfonts = ["Cat_Meow.sf2", "MEOW.sf2", "Thurston_Waffles.sf2"];
+
   for (const track of tracks) {
     for (const note of track.notes || []) {
+      // Cek soundfont pada level note atau track
+      const soundfont = note.soundfont || track.soundfont || "";
+      const isCatSoundfont = allowedSoundfonts.some(sf => soundfont.includes(sf));
+      
+      // Lewati note yang tidak menggunakan soundfont yang diizinkan
+      if (!isCatSoundfont) continue;
+
       const pitch = Number(note.midi);
       if (!Number.isFinite(pitch)) continue;
       const notes = notesByPitch.get(pitch) || [];
@@ -80,6 +90,7 @@ const buildPitchCharacters = (tracks) => {
       })),
     }));
 };
+// --- MODIFIKASI SELESAI ---
 
 const getCharacterFrame = (intervals, sourceTime, characterFps) => {
   const sourceFrame = sourceTime * characterFps;
@@ -559,9 +570,7 @@ export const SingcatVideo = ({ song, title }) => {
                   />
 
                   <Img
-                    src={staticFile(
-                      `assets/char/char1/char${padFrame(characterFrame)}.png`,
-                    )}
+                    src={staticFile(`assets/char/char1/char${padFrame(characterFrame)}.png`)}
                     style={{
                       position: "absolute",
                       bottom: 0,
@@ -570,8 +579,9 @@ export const SingcatVideo = ({ song, title }) => {
                       filter: `url(#${characterFilterId(characterIndex)})`,
                       objectFit: "contain",
                       scale: "1.05",
-                      zIndex: 1,
+                      zIndex: 1
                     }}
+                    from={-50}
                   />
                 </div>
               );
